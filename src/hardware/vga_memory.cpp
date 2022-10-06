@@ -201,6 +201,7 @@ public:
 		addr = CHECKED(addr);
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
+		printf("hello7\n");
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -211,6 +212,7 @@ public:
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
+		printf("hello8\n");
 	}
 
 	void writed(PhysPt addr, uint32_t val)
@@ -223,6 +225,7 @@ public:
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
+		printf("hello9\n");
 	}
 
 	uint8_t readb(PhysPt addr)
@@ -294,7 +297,18 @@ public:
 		addr = CHECKED2(addr);
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
+//	printf("hello30\n");
+		const int width = 320;
+		const int height = 200;
+		int x = addr % width;
+		int y = addr / width; //must be integer div
+		printf("#[%d] hello30b 0x%X xy[%d,%d] %d\n", KAT_CURRENT_FRAME, addr, x, y, val);
 	}
+
+//https://stackoverflow.com/questions/10132706/retrieve-byte-from-32-bit-integer-using-bitwise-operators
+int getByte(int x, int n) {
+  return (x >> 8*n) & 0xFF;
+}
 
 	void writew(PhysPt addr, uint16_t val)
 	{
@@ -304,6 +318,11 @@ public:
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
+		const int width = 320;
+		const int height = 200;
+		int x = addr % width;
+		int y = addr / width; //must be integer div
+		printf("#[%d] hello31w 0x%X xy[%d,%d] %d %d\n", KAT_CURRENT_FRAME, addr, x, y, getByte(val, 0), getByte(val, 1));
 	}
 
 	void writed(PhysPt addr, uint32_t val)
@@ -316,6 +335,12 @@ public:
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
+
+		const int width = 320;
+		const int height = 200;
+		int x = addr % width;
+		int y = addr / width; //must be integer div
+		printf("#[%d] hello32d 0x%X xy[%d,%d] %d %d %d %d\n", KAT_CURRENT_FRAME, addr, x, y, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3));
 	}
 };
 
@@ -432,10 +457,12 @@ public:
 		MEM_CHANGED( addr );
 		writeHandler_byte(addr, val);
 		writeCache_byte(addr, val);
+		printf("hello10b\n");
 	}
 
 	void writew(PhysPt addr, uint16_t val)
 	{
+		printf("hello11w\n");
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_write_full;
 		addr = CHECKED(addr);
@@ -452,7 +479,8 @@ public:
 
 	void writed(PhysPt addr, uint32_t val)
 	{
-		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
+		printf("hello12d\n");
+			addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_write_full;
 		addr = CHECKED(addr);
 		MEM_CHANGED( addr );
@@ -493,6 +521,7 @@ public:
 		addr = CHECKED2(addr);
 		MEM_CHANGED( addr << 2 );
 		writeHandler(addr+0,(uint8_t)(val >> 0));
+		printf("hello13\n");
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -503,7 +532,8 @@ public:
 		MEM_CHANGED( addr << 2);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
-	}
+	printf("hello14\n");
+		}
 
 	void writed(PhysPt addr, uint32_t val)
 	{
@@ -515,6 +545,7 @@ public:
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
+		printf("hello15\n");
 	}
 };
 
@@ -539,21 +570,29 @@ public:
 		}
 	}
 
-	void writeb(PhysPt addr, uint8_t val)
+	void writeb(PhysPt addr, uint8_t val) // KAT we don't care (ATM at least) about non-character writes to color or attribute pages. but snooping only the final index didn't seem to show results.
 	{
-		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
+		unsigned char mode = '?';
+			addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		
 		if (GCC_LIKELY(vga.seq.map_mask == 0x4)) {
 			vga.draw.font[addr] = val;
+			mode = 'N'; // 'normal', so far all hits are here
 		} else {
 			if (vga.seq.map_mask & 0x4) // font map
-				vga.draw.font[addr] = val;
+				{vga.draw.font[addr] = val; mode = 'f';} //(f)ont, none so far
 			if (vga.seq.map_mask & 0x2) // character attribute
+				{vga.draw.font[addr] = val; mode = 'a'; //(a)ttribute, none so far
 				vga.mem.linear[CHECKED3(vga.svga.bank_read_full +
-				                        addr + 1)] = val;
-			if (vga.seq.map_mask & 0x1) // character index
+				                        addr + 1)] = val;}
+			if (vga.seq.map_mask & 0x1) // character index				
+				{vga.draw.font[addr] = val; mode = 'i'; //(i)ndex, none so far
 				vga.mem.linear[CHECKED3(vga.svga.bank_read_full + addr)] = val;
+				}
 		}
+		if(val < 32 || val >= 127)val = '?';
+		printf("#[%d] hello16b+%c  0x%X = %d [%c]\n", KAT_CURRENT_FRAME, mode, addr, val, val);
+
 	}
 };
 
@@ -608,6 +647,7 @@ public:
 		addr = CHECKED(addr);
 		MEM_CHANGED( addr );
 		host_writeb(&vga.mem.linear[addr], val);
+		printf("hello4\n");
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -617,6 +657,7 @@ public:
 		addr = CHECKED(addr);
 		MEM_CHANGED(addr);
 		host_writew_at(vga.mem.linear, addr, val);
+		printf("hello5\n");
 	}
 
 	void writed(PhysPt addr, uint32_t val)
@@ -626,6 +667,7 @@ public:
 		addr = CHECKED(addr);
 		MEM_CHANGED(addr);
 		host_writed_at(vga.mem.linear, addr, val);
+		printf("hello6\n");
 	}
 };
 
@@ -640,6 +682,7 @@ public:
 		addr = CHECKED4(addr);
 		MEM_CHANGED( addr << 3 );
 		writeHandler(addr+0,(uint8_t)(val >> 0));
+		printf("hello\n");
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -649,6 +692,7 @@ public:
 		MEM_CHANGED( addr << 3 );
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
+		printf("hello2\n");
 	}
 
 	void writed(PhysPt addr, uint32_t val)
@@ -660,6 +704,7 @@ public:
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
+		printf("hello3\n");
 	}
 
 	uint8_t readb(PhysPt addr)
@@ -718,7 +763,8 @@ public:
 
 	void writeb(PhysPt addr, uint8_t val)
 	{
-		addr = PAGING_GetPhysicalAddress(addr) - vga.lfb.addr;
+	printf("hello18\n");
+			addr = PAGING_GetPhysicalAddress(addr) - vga.lfb.addr;
 		addr = CHECKED(addr);
 		host_writeb(&vga.mem.linear[addr], val);
 		MEM_CHANGED( addr );
@@ -726,6 +772,7 @@ public:
 
 	void writew(PhysPt addr, uint16_t val)
 	{
+	printf("hello19\n");
 		addr = PAGING_GetPhysicalAddress(addr) - vga.lfb.addr;
 		addr = CHECKED(addr);
 		host_writew_at(vga.mem.linear, addr, val);
@@ -734,6 +781,7 @@ public:
 
 	void writed(PhysPt addr, uint32_t val)
 	{
+	printf("hello20\n");
 		addr = PAGING_GetPhysicalAddress(addr) - vga.lfb.addr;
 		addr = CHECKED(addr);
 		host_writed_at(vga.mem.linear, addr, val);
@@ -766,18 +814,21 @@ public:
 
 	void writeb(PhysPt addr, uint8_t val)
 	{
+	printf("hello24\n");
 		Bitu port = PAGING_GetPhysicalAddress(addr) & 0xffff;
 		XGA_Write(port, val, io_width_t::byte);
 	}
 
 	void writew(PhysPt addr, uint16_t val)
 	{
+	printf("hello25\n");
 		Bitu port = PAGING_GetPhysicalAddress(addr) & 0xffff;
 		XGA_Write(port, val, io_width_t::word);
 	}
 
 	void writed(PhysPt addr, uint32_t val)
 	{
+	printf("hello26\n");
 		Bitu port = PAGING_GetPhysicalAddress(addr) & 0xffff;
 		XGA_Write(port, val, io_width_t::dword);
 	}

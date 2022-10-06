@@ -28,6 +28,8 @@
 #include "pic.h"
 #include "video.h"
 
+int KAT_CURRENT_FRAME = 0;
+
 VGA_Type vga;
 SVGA_Driver svga;
 

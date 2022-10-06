@@ -31,6 +31,9 @@
 //#define VGA_KEEP_CHANGES
 #define VGA_CHANGE_SHIFT	9
 
+
+extern int KAT_CURRENT_FRAME;
+
 class PageHandler;
 
 enum VGAModes {

@@ -59,6 +59,7 @@ MachineType machine;
 SVGACards svgaCard;
 
 /* The whole load of startups for all the subfunctions */
+void MSG_Init(Section_prop *);
 void LOG_StartUp();
 void MEM_Init(Section *);
 void PAGING_Init(Section *);
@@ -339,6 +340,7 @@ static void DOSBOX_RealInit(Section * sec) {
 	ticksLast=GetTicks();
 	ticksLocked = false;
 	DOSBOX_SetLoop(&Normal_Loop);
+	MSG_Init(section);
 
 	MAPPER_AddHandler(DOSBOX_UnlockSpeed, SDL_SCANCODE_F12, MMOD2,
 	                  "speedlock", "Speedlock");

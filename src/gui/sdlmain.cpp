@@ -723,6 +723,21 @@ static void log_display_properties(int source_w, int source_h,
 	        target_w,
 	        target_h,
 	        out_par);
+	printf("DISPLAY: %s %dx%d%s (%Xh) at %s%2.5g Hz %s, scaled"
+	        " by %.1fx%.1f to %dx%d with %#.2g pixel-aspect\n",
+	        type_name,
+	        source_w,
+	        source_h,
+	        type_colours,
+	        CurMode->mode,
+	        double_scanned_str,
+	        refresh_rate,
+	        frame_mode,
+	        scale_x,
+	        scale_y,
+	        target_w,
+	        target_h,
+	        out_par); // KAT
 }
 
 static SDL_Point get_initial_window_position_or_default(int default_val)

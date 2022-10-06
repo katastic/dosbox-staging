@@ -911,6 +911,7 @@ static void VGA_VertInterrupt(uint32_t /*val*/)
 	    ((vga.crtc.vertical_retrace_end & 0x30) == 0x10)) {
 		vga.draw.vret_triggered=true;
 		if (GCC_UNLIKELY(machine==MCH_EGA)) PIC_ActivateIRQ(9);
+	printf("VGA_VertInterrupt VSYNC ----------------- \n"); //NOT triggered so far
 	}
 }
 
@@ -923,17 +924,21 @@ static void VGA_Other_VertInterrupt(uint32_t val)
 
 static void VGA_DisplayStartLatch(uint32_t /*val*/)
 {
+	printf("VGA_DisplayStartLatch ----------------- \n"); 
 	vga.config.real_start = vga.config.display_start & (vga.vmemwrap - 1);
 	vga.draw.bytes_skip = vga.config.bytes_skip;
 }
 
 static void VGA_PanningLatch(uint32_t /*val*/)
 {
+	printf("VGA_PanningLatch ----------------- \n"); 
 	vga.draw.panning = vga.config.pel_panning;
 }
 
 static void VGA_VerticalTimer(uint32_t /*val*/)
 {
+	printf("VGA_VerticalTimer ----------------- \n"); 
+	KAT_CURRENT_FRAME++;
 	vga.draw.delay.framestart = PIC_FullIndex();
 	PIC_AddEvent(VGA_VerticalTimer, vga.draw.delay.vtotal);
 
