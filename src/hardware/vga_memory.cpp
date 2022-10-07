@@ -464,22 +464,6 @@ public:
 
 	void writew(PhysPt addr, uint16_t val)
 	{
-		// VGA 320x200x8, Nite Raid.
-		const int width = 320;
-// 		const int height = 200;
-		int x = addr % width;
-		int y = addr / width; //must be integer div
-		const int NUM_BYTES = 2;
-		printf("%d,hello11w,%d,%d,%d,%s,%s,0x%X,%d,%d,%d,%d,%d\n", 
-			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, x, y, NUM_BYTES, getByte(val, 0), getByte(val, 1));
-		// KAT
-/* int MODE_NUMBER = 0;
- int MODE_W = 0;
- int MODE_H = 0;
- const char *MODE_NAME;
- const char *MODE_COLORS = 0;
-*/
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_write_full;
 		addr = CHECKED(addr);
@@ -492,7 +476,24 @@ public:
 			writeHandler_word(addr, val);
 		}
 		writeCache_word(addr, val);
-	}
+
+
+		// VGA 320x200x8, Nite Raid.
+//		const int width = 320;
+// 		const int height = 200;
+//		int x = addr % width;
+//		int y = addr / width; //must be integer div
+		const int NUM_BYTES = 2;
+		printf("%d,hello11w,%d,%d,%d,%s,%s,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1));
+		// KAT
+/* int MODE_NUMBER = 0;
+ int MODE_W = 0;
+ int MODE_H = 0;
+ const char *MODE_NAME;
+ const char *MODE_COLORS = 0;
+*/	}
 
 	void writed(PhysPt addr, uint32_t val)
 	{
