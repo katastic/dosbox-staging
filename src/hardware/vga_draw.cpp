@@ -924,21 +924,22 @@ static void VGA_Other_VertInterrupt(uint32_t val)
 
 static void VGA_DisplayStartLatch(uint32_t /*val*/)
 {
-	printf("VGA_DisplayStartLatch ----------------- \n"); 
+	printf("%d,VGA_DisplayStartLatch,,,,,,,,,,,\n", KAT_CURRENT_FRAME); 
+
 	vga.config.real_start = vga.config.display_start & (vga.vmemwrap - 1);
 	vga.draw.bytes_skip = vga.config.bytes_skip;
 }
 
 static void VGA_PanningLatch(uint32_t /*val*/)
 {
-	printf("VGA_PanningLatch ----------------- \n"); 
+	printf("%d,VGA_PanningLatch,,,,,,,,,,,\n", KAT_CURRENT_FRAME); 
 	vga.draw.panning = vga.config.pel_panning;
 }
 
 static void VGA_VerticalTimer(uint32_t /*val*/)
 {
-	printf("VGA_VerticalTimer ----------------- \n"); 
 	KAT_CURRENT_FRAME++;
+	printf("%d,VGA_VerticalTimer,,,,,,,,,,,\n", KAT_CURRENT_FRAME); 
 	vga.draw.delay.framestart = PIC_FullIndex();
 	PIC_AddEvent(VGA_VerticalTimer, vga.draw.delay.vtotal);
 

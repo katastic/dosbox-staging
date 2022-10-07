@@ -723,6 +723,15 @@ static void log_display_properties(int source_w, int source_h,
 	        target_w,
 	        target_h,
 	        out_par);
+ 
+ // setting these for the data writing sections can remember them.
+	MODE_NAME = type_name;
+	MODE_H = source_h;
+	MODE_W = source_w;	
+	MODE_NUMBER = CurMode->mode;
+	MODE_COLORS = type_colours;
+
+    //kat
 	printf("DISPLAY: %s %dx%d%s (%Xh) at %s%2.5g Hz %s, scaled"
 	        " by %.1fx%.1f to %dx%d with %#.2g pixel-aspect\n",
 	        type_name,
@@ -739,6 +748,14 @@ static void log_display_properties(int source_w, int source_h,
 	        target_h,
 	        out_par); // KAT
 }
+
+// KAT
+ int MODE_NUMBER = 0;
+ int MODE_W = 0;
+ int MODE_H = 0;
+ const char *MODE_NAME;
+ const char *MODE_COLORS = 0;
+
 
 static SDL_Point get_initial_window_position_or_default(int default_val)
 {

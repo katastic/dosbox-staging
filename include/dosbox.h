@@ -19,6 +19,12 @@
 #ifndef DOSBOX_DOSBOX_H
 #define DOSBOX_DOSBOX_H
 
+extern int MODE_NUMBER;
+extern int MODE_W;
+extern int MODE_H;
+extern const char *MODE_NAME;
+extern const char *MODE_COLORS;
+
 #include "config.h"
 #include "compiler.h"
 #include "types.h"

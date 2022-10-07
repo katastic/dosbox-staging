@@ -29,6 +29,12 @@
 #include "setup.h"
 
 
+
+//https://stackoverflow.com/questions/10132706/retrieve-byte-from-32-bit-integer-using-bitwise-operators
+int getByte(int x, int n) {
+  return (x >> 8*n) & 0xFF;
+}
+
 #ifndef C_VGARAM_CHECKED
 #define C_VGARAM_CHECKED 1
 #endif
@@ -284,6 +290,7 @@ public:
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)(write_pixels+4)=colors4_7;
+		
 	}
 public:	
 	VGA_UnchainedEGA_Handler()  {
@@ -299,16 +306,11 @@ public:
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 //	printf("hello30\n");
 		const int width = 320;
-		const int height = 200;
+// 		const int height = 200;
 		int x = addr % width;
 		int y = addr / width; //must be integer div
 		printf("#[%d] hello30b 0x%X xy[%d,%d] %d\n", KAT_CURRENT_FRAME, addr, x, y, val);
 	}
-
-//https://stackoverflow.com/questions/10132706/retrieve-byte-from-32-bit-integer-using-bitwise-operators
-int getByte(int x, int n) {
-  return (x >> 8*n) & 0xFF;
-}
 
 	void writew(PhysPt addr, uint16_t val)
 	{
@@ -319,7 +321,7 @@ int getByte(int x, int n) {
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		const int width = 320;
-		const int height = 200;
+// 		const int height = 200;
 		int x = addr % width;
 		int y = addr / width; //must be integer div
 		printf("#[%d] hello31w 0x%X xy[%d,%d] %d %d\n", KAT_CURRENT_FRAME, addr, x, y, getByte(val, 0), getByte(val, 1));
@@ -337,7 +339,7 @@ int getByte(int x, int n) {
 		writeHandler(addr+3,(uint8_t)(val >> 24));
 
 		const int width = 320;
-		const int height = 200;
+// 		const int height = 200;
 		int x = addr % width;
 		int y = addr / width; //must be integer div
 		printf("#[%d] hello32d 0x%X xy[%d,%d] %d %d %d %d\n", KAT_CURRENT_FRAME, addr, x, y, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3));
@@ -462,7 +464,22 @@ public:
 
 	void writew(PhysPt addr, uint16_t val)
 	{
-		printf("hello11w\n");
+		// VGA 320x200x8, Nite Raid.
+		const int width = 320;
+// 		const int height = 200;
+		int x = addr % width;
+		int y = addr / width; //must be integer div
+		const int NUM_BYTES = 2;
+		printf("%d,hello11w,%d,%d,%d,%s,%s,0x%X,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, x, y, NUM_BYTES, getByte(val, 0), getByte(val, 1));
+		// KAT
+/* int MODE_NUMBER = 0;
+ int MODE_W = 0;
+ int MODE_H = 0;
+ const char *MODE_NAME;
+ const char *MODE_COLORS = 0;
+*/
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_write_full;
 		addr = CHECKED(addr);
