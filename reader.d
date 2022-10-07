@@ -92,10 +92,16 @@ void main()
 	frames ~= currentFrame; // last one onto the pile
 	
 	
-	foreach(o; frames[0].ops)
+	foreach(f; frames)
 		{
-		writeln(o);
+		writeln("FRAME ", f.frameNumber, " (", f.ops.length, " draw ops) ---------------------------------------------------------------");
+		foreach(o; f.ops)
+			{
+			writeln("    ", o);
+			}
 		}
+	writeln("total frames: ", frames.length);
+//	writeln("total frame[0].ops: ", frames[0].ops.length);
 	
 /+    auto text = "Joe,Carpenter,300000\nFred,Blacksmith,400000\r\n";
 
