@@ -384,16 +384,20 @@ public:
 	
 	static inline void writeCache_byte(PhysPt addr, uint8_t val)
 	{
+
+//	printf("hello60\n");
 		WriteCache_template(host_writeb, addr, val);
 	}
 	
 	static inline void writeCache_word(PhysPt addr, uint16_t val)
 	{
+//	printf("hello61\n");
 		WriteCache_template(host_writew, addr, val);
 	}
 	
 	static inline void writeCache_dword(PhysPt addr, uint32_t val)
 	{
+//	printf("hello62\n");
 		WriteCache_template(host_writed, addr, val);
 	}
 
@@ -401,16 +405,19 @@ public:
 	// if that bit is set
 	static inline void writeHandler_byte(PhysPt addr, uint8_t val)
 	{
+//	printf("hello63\n");
 		host_writeb(ToLinear(addr), val);
 	}
 	
 	static inline void writeHandler_word(PhysPt addr, uint16_t val)
 	{
+//	printf("hello64\n");
 		host_writew(ToLinear(addr), val);
 	}
 	
 	static inline void writeHandler_dword(PhysPt addr, uint32_t val)
 	{
+//	printf("hello65\n");
 		host_writed(ToLinear(addr), val);
 	}
 
@@ -468,6 +475,12 @@ public:
 		addr += vga.svga.bank_write_full;
 		addr = CHECKED(addr);
 		MEM_CHANGED( addr );
+		
+				const int NUM_BYTES = 2;
+		printf("%d,hello11w,%d,%d,%d,%s,%s,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1));
+		
 //		MEM_CHANGED( addr + 1);
 		if (GCC_UNLIKELY(addr & 1)) {
 			writeHandler_byte(addr + 0, val >> 0);
@@ -483,10 +496,7 @@ public:
 // 		const int height = 200;
 //		int x = addr % width;
 //		int y = addr / width; //must be integer div
-		const int NUM_BYTES = 2;
-		printf("%d,hello11w,%d,%d,%d,%s,%s,%d,%d,%d,%d\n", 
-			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1));
+
 		// KAT
 /* int MODE_NUMBER = 0;
  int MODE_W = 0;

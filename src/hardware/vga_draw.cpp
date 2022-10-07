@@ -917,6 +917,7 @@ static void VGA_VertInterrupt(uint32_t /*val*/)
 
 static void VGA_Other_VertInterrupt(uint32_t val)
 {
+	printf("VGA_Other_VertInterrupt ----------------- \n"); //NOT tested
 	if (val)
 		PIC_ActivateIRQ(5);
 	else PIC_DeActivateIRQ(5);
@@ -925,7 +926,6 @@ static void VGA_Other_VertInterrupt(uint32_t val)
 static void VGA_DisplayStartLatch(uint32_t /*val*/)
 {
 	printf("%d,VGA_DisplayStartLatch,0,0,0,0,0,0,0,0,0\n", KAT_CURRENT_FRAME); 
-
 	vga.config.real_start = vga.config.display_start & (vga.vmemwrap - 1);
 	vga.draw.bytes_skip = vga.config.bytes_skip;
 }

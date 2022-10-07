@@ -15,6 +15,13 @@ import std.typecons;
 	A separate set of special ops, [sops]? Or do we put it into the [op] struct?
 */
 
+struct sop
+	{
+	bool isDisplayStartLatch=false;
+	bool isPanningLatch=false;
+	bool isVerticalTimer=false;
+	}
+
 struct op
 	{
 	int address;
@@ -43,9 +50,7 @@ class frame
 
 
 void main()
-{
-	// To read the same string from the file "filename.csv":
-
+	{
 	// for each frame, track the min and max, address touched.
 
 	frame[] frames;
@@ -76,8 +81,7 @@ void main()
 				currentFrame = new frame; // make struct
 				currentFrame.frameNumber = currentExpectedFrame; // setup struct
 				}
-				
-				
+			
 			if(record[1] == "hello11w")
 				{
 				op o;
@@ -89,36 +93,22 @@ void main()
 				currentFrame.ops ~= o;
 				}
 		}
+		
 	frames ~= currentFrame; // last one onto the pile
-	
+	int totalOps=0;
 	
 	foreach(f; frames)
 		{
 		writeln("FRAME ", f.frameNumber, " (", f.ops.length, " draw ops) ---------------------------------------------------------------");
+		totalOps += f.ops.length;
 		foreach(o; f.ops)
 			{
 			writeln("    ", o);
 			}
 		}
+		
 	writeln("total frames: ", frames.length);
-//	writeln("total frame[0].ops: ", frames[0].ops.length);
-	
-/+    auto text = "Joe,Carpenter,300000\nFred,Blacksmith,400000\r\n";
+	writeln("total ops: ", totalOps);
 
-    foreach (record; csvReader!(Tuple!(string, string, int))(text))
-    {
-        writefln("%s works as a %s and earns $%d per year",
-                 record[0], record[1], record[2]);
-    }
-
-    // To read the same string from the file "filename.csv":
-
-    auto file = File("filename.csv", "r");
-    foreach (record;
-        file.byLine.joiner("\n").csvReader!(Tuple!(string, string, int)))
-    {
-        writefln("%s works as a %s and earns $%d per year",
-                 record[0], record[1], record[2]);
-    }
-}+/
-}
+	// from https://dlang.org/phobos/std_csv.html
+	}
