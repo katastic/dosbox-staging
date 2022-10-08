@@ -471,15 +471,19 @@ public:
 
 	void writew(PhysPt addr, uint16_t val)
 	{
+		printf("addr0 = %d ", addr);
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
+		printf("addr1 = %d ", addr);
 		addr += vga.svga.bank_write_full;
+		printf("addr2 = %d ", addr);
 		addr = CHECKED(addr);
+		printf("addr3 = %d\n", addr);
 		MEM_CHANGED( addr );
 		
-				const int NUM_BYTES = 2;
-		printf("%d,hello11w,%d,%d,%d,%s,%s,%d,%d,%d,%d\n", 
+		const int NUM_BYTES = 2;
+		printf("%d,hello11w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1));
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1),-1,-1);
 		
 //		MEM_CHANGED( addr + 1);
 		if (GCC_UNLIKELY(addr & 1)) {
@@ -507,7 +511,6 @@ public:
 
 	void writed(PhysPt addr, uint32_t val)
 	{
-		printf("hello12d\n");
 			addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_write_full;
 		addr = CHECKED(addr);
@@ -522,6 +525,12 @@ public:
 			writeHandler_dword(addr, val);
 		}
 		writeCache_dword(addr, val);
+
+		const int NUM_BYTES = 2;
+		printf("%d,hello12d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3));
+
 	}
 };
 
