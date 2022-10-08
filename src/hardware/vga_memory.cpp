@@ -471,13 +471,13 @@ public:
 
 	void writew(PhysPt addr, uint16_t val)
 	{
-		printf("addr0 = %d ", addr);
+//		printf("addr0 = %d ", addr);
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
-		printf("addr1 = %d ", addr);
+//		printf("addr1 = %d ", addr);
 		addr += vga.svga.bank_write_full;
-		printf("addr2 = %d ", addr);
+//		printf("addr2 = %d ", addr);
 		addr = CHECKED(addr);
-		printf("addr3 = %d\n", addr);
+//		printf("addr3 = %d\n", addr);
 		MEM_CHANGED( addr );
 		
 		const int NUM_BYTES = 2;
@@ -609,26 +609,32 @@ public:
 
 	void writeb(PhysPt addr, uint8_t val) // KAT we don't care (ATM at least) about non-character writes to color or attribute pages. but snooping only the final index didn't seem to show results.
 	{
-		unsigned char mode = '?';
+		unsigned int mode = -1;
 			addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		
 		if (GCC_LIKELY(vga.seq.map_mask == 0x4)) {
 			vga.draw.font[addr] = val;
-			mode = 'N'; // 'normal', so far all hits are here
+			mode = 0; // 'normal', so far all hits are here
 		} else {
 			if (vga.seq.map_mask & 0x4) // font map
-				{vga.draw.font[addr] = val; mode = 'f';} //(f)ont, none so far
+				{vga.draw.font[addr] = val; mode = 1;} //(f)ont, none so far
 			if (vga.seq.map_mask & 0x2) // character attribute
-				{vga.draw.font[addr] = val; mode = 'a'; //(a)ttribute, none so far
+				{vga.draw.font[addr] = val; mode = 2; //(a)ttribute, none so far
 				vga.mem.linear[CHECKED3(vga.svga.bank_read_full +
 				                        addr + 1)] = val;}
 			if (vga.seq.map_mask & 0x1) // character index				
-				{vga.draw.font[addr] = val; mode = 'i'; //(i)ndex, none so far
+				{vga.draw.font[addr] = val; mode = 3; //(i)ndex, none so far
 				vga.mem.linear[CHECKED3(vga.svga.bank_read_full + addr)] = val;
 				}
 		}
-		if(val < 32 || val >= 127)val = '?';
-		printf("#[%d] hello16b+%c  0x%X = %d [%c]\n", KAT_CURRENT_FRAME, mode, addr, val, val);
+		//if(val < 32 || val >= 127)val = '?';
+		//printf("#[%d] hello16b+%c  0x%X = %d [%c]\n", KAT_CURRENT_FRAME, mode, addr, val, val);
+
+		const int NUM_BYTES = 1;
+		printf("%d,hello16b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, val, -1,-1,mode);
+			// WANNING, we're tossing mode on the end!
 
 	}
 };
