@@ -130,7 +130,8 @@ static if (false) // MULTISAMPLING. Not sure if helpful.
 	
 	with(ALLEGRO_BLEND_MODE)
 		{
-		al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
+		al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
+//		al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ALPHA, ALLEGRO_INVERSE_ALPHA);
 		}
 				
 	// load animations/etc
@@ -523,8 +524,8 @@ void drawData()
 	foreach(f; frames)
 		{
 		al_set_target_bitmap(canvas);
-		al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
-		al_clear_to_color(blue);
+		//al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
+		al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
 
 		writeln("FRAME ", f.frameNumber, " (", f.ops.length, " draw ops) ---------------------------------------------------------------");
 		totalOps += f.ops.length;
@@ -539,7 +540,7 @@ void drawData()
 			
 	//		writeln("write ", c1, " ", c2, " at ", x, " ", y, " addr[", o.address, "]");
 			opsRun++;
-			if(opsRun >= 64 && !flipPerFrame)
+			if(opsRun >= 256 && !flipPerFrame)
 				{
 				al_unlock_bitmap(canvas);
 //				writeln("vsync");
@@ -547,21 +548,30 @@ void drawData()
 				// now draw BOTH layers to [screen] separately, with tinting for newest additions
 				al_set_target_backbuffer(al_display);
 				al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
-				al_draw_bitmap(canvasCombined, 320, 0, 0); //update screen with canvas draws so far
-				al_draw_tinted_bitmap(canvas, ALLEGRO_COLOR(1,1,1,1), 0, 0, 0); //newest canvas additions
+//				al_save_bitmap("canvasCombined.bmp", canvasCombined);
+//				al_save_bitmap("canvas.bmp", canvas);
+//				al_draw_bitmap(canvasCombined, 0, 0, 0); //update screen with canvas draws so far
+//				al_draw_tinted_bitmap(canvas, ALLEGRO_COLOR(1,0,0,.5), 0, 0, 0); //newest canvas additions
+				float SCALE=3.5;
+				al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,1,1,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+				al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+
 				al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);
 				al_flip_display();
 	
 				// now combine our old work into canvasCombined and then clear the other canvas
 				al_set_target_bitmap(canvasCombined);
-//				al_clear_to_color(ALLEGRO_COLOR(0, 1, 0, 1)); // clear our working [canvas] to transparent
 				al_draw_bitmap(canvas, 0, 0, 0); // into ^^^canvasCombined
 					// WAIT, won't this overwrite canvasCombined?
 				// Start of next run, clear canvas:
 				al_set_target_bitmap(canvas);
-				al_clear_to_color(red); // clear our working [canvas] to transparent
-				al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
-				al_clear_to_color(green); // clear our working [canvas] to transparent
+		//		al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
+				with(ALLEGRO_BLEND_MODE)
+					{
+					al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ZERO, ALLEGRO_ONE); // write alpha
+					al_clear_to_color(ALLEGRO_COLOR(0,0,0,0)); // clear our working [canvas] to transparent
+					al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
+					}
 
 			//	al_reset_target();
 		//		al_clear_to_color(black);
@@ -576,8 +586,11 @@ void drawData()
 			
 			// now draw BOTH layers to [screen] separately, with tinting for newest additions
 			al_set_target_backbuffer(al_display);
-			al_draw_bitmap(canvasCombined, 0, 0, 0); //update screen with canvas draws so far
-			al_draw_tinted_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, 0); //newest canvas additions
+//			al_draw_bitmap(canvasCombined, 0, 0, 0); //update screen with canvas draws so far
+float SCALE=4.0;
+ al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+//			al_draw_tinted_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, 0); //newest canvas additions
+ al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
 			al_flip_display();
 			
 			// now combine our old work into canvasCombined and clear the other canvas
@@ -596,8 +609,8 @@ void executeOnce()
 	{
 	file = File("/home/novous/Desktop/git/dosbox-staging/build/release/output2.txt", "r");
 	parseData();
-	canvas = al_create_bitmap(800, 600);
-	canvasCombined = al_create_bitmap(800, 600);
+	canvas = al_create_bitmap(320, 200);
+	canvasCombined = al_create_bitmap(320, 200);
 	assert(canvas != null);
 	}
 
