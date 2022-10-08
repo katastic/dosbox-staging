@@ -1,4 +1,14 @@
 /+
+	----> looks like in frame mode we're somehow still overwriting [canvasCombined] with zeros? 
+
+
+	- not directly storing SOPS system operations like vsync. it's implicit in the frame boundary. assuming we actually have the right frame boundary trigger.
+
+	- GET STARTING PALETTE SOMEWHERE 
+
+	- [GUI] let us PAUSE THE DRAWING [also allow keyboard input during], as well as BACKUP A FRAME and move FORWARD a frame, and draw JUST [canvas] or [canvasCombined]
+		- let us change the [op] batch size, or view frame mode.
+		- dump screenshots of specific frames of canvas/canvascombined
 
 	how do we want to handle showing changes? if we dump to a canvas, changes are gone.
 		We could draw twice. 
@@ -13,23 +23,6 @@
 				newCanvas has new data drawn NORMAL but when drawn to SCREEN it has additional blending applied
 				then, combine [newCanvas] into [lastCanvas], clear [newCanvas] and start over.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 +/
 // GLOBAL CONSTANTS
 // =============================================================================
@@ -37,6 +30,9 @@ immutable bool DEBUG_NO_BACKGROUND = false; /// No graphical background so we dr
 
 // =============================================================================
 
+import std.array;
+import std.csv;
+import std.typecons;
 import std.stdio;
 import std.conv;
 import std.string;
@@ -46,11 +42,6 @@ import std.algorithm;
 import std.traits; // EnumMembers
 import std.datetime;
 import std.datetime.stopwatch : benchmark, StopWatch, AutoStart;
-//thread yielding?
-//-------------------------------------------
-//import core.thread; //for yield... maybe?
-//extern (C) int pthread_yield(); //does this ... work? No errors yet I can't tell if it changes anything...
-//------------------------------
 
 pragma(lib, "dallegro5ldc");
 
@@ -408,14 +399,6 @@ int main(string [] args)
 	return 0;
 	}
 	
-	
-	
-	import std.algorithm;
-import std.array;
-import std.csv;
-import std.stdio;
-import std.typecons;
-
 /*
 	how do we handle anything "special" that might happen during a draw, that isn't a pixel and 
 	isn't a VSYNC frame boundary?
@@ -425,14 +408,41 @@ import std.typecons;
 		- what if something [PAN TRACE] or something happens in the middle of a vsync/draw op
 		
 	A separate set of special ops, [sops]? Or do we put it into the [op] struct?
+	
+	--> PALETTE UPDATES????
 */
 
-struct sop
+struct sop /// system operation
 	{
 	bool isDisplayStartLatch=false;
 	bool isPanningLatch=false;
 	bool isVerticalTimer=false;
 	}
+
+struct triplet
+	{
+	ubyte r;
+	ubyte g;
+	ubyte b;
+	}
+
+triplet[256] CLT; // colorLookupTable; 
+
+struct pop /// palette (update) operation
+	{
+	ubyte index;
+	ubyte r, g, b;
+	}
+	/+
+		how are we EMULATING the color lookup table?
+		
+		- SIMPLEST METHOD so far, would be to just hit all pops for a frame then draw.
+			- This covers the most COMMON case too... we just need a PALETTE LOADED and we don't want to worry about PLANNING DUMPS at the EXACT MOMENT we need them. This way is automatic and changes if palettes change (menu palette, vs game palette. Diablo 1's multiple level palettes. etc. Any game with streaming palettes.)
+		- what about color cycling? (We could do a brute force "if matches RGB, change ALL of those matches", which will accidentally catch two pixels that have same RGBs but different INDEXes (two blacks in a palette). Rare (only when color cycling those specific colors) but possible. 
+		- what about palette changes BETWEEN frames? (very rare on PC, AFAIK. Unlike Genesis which had like 61 total colors. 256 is huge for a SINGLE frame in the 90s.)
+	
+		- ALSO
+	+/
 
 struct op
 	{
@@ -446,6 +456,7 @@ struct op
 class frame 
 	{
 	op[] ops;
+	pop[] pops;
 	long frameNumber = -100; // just in case -1 or 0 get used for special data dumping flags 
 	long maxAddress = -1;
 	long minAddress = 10_000_000;
@@ -478,6 +489,7 @@ void parseData()
 			string, string, int, int, int, 
 			int, int, int, int, int)))
 		{
+			
 //			writefln("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d",
 	//			record[0], record[1], record[2], record[3], record[4], record[5],
 		//		record[6], record[7], record[8], record[9], record[10], record[11],
@@ -508,18 +520,68 @@ void parseData()
 				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
 				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
 				currentFrame.ops ~= o;
+				totalOps++;
 				}
+				
+			if(record[1] == "hello16b") 	// THIS IS VERY LIKELY TEXT.
+				{
+				op o;
+				o.address = record[7]; 
+				o.bytes = record[8];
+				currentFrame.width = record[3]; // NOTE frame settings
+				currentFrame.height = record[4];
+				if(o.bytes == 1) {o.data[0] = record[9];}
+				if(o.bytes == 2) {assert(false);} //never more than 1 byte
+				if(o.bytes == 4) {assert(false);}
+				
+				if(false) currentFrame.ops ~= o; // lets NOT add these to our graphical packet op lists
+				if(false) printf("%c", o.data[0]); // dump to stdout. So far this is all junk data. Maybe setting regs or something???
+				
+				// --> what if this is the palette???
+				
+				// record[13] in this packet is a MODE specifier (almost always zero)
+				}
+				
+			if(record[1] == "hello11w")
+				{
+				op o;
+				o.address = record[7]; 
+				o.bytes = record[8];
+				currentFrame.width = record[3]; // NOTE frame settings
+				currentFrame.height = record[4];
+				if(o.bytes == 1) {o.data[0] = record[9];}
+				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
+				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[10]; o.data[2] = record[11]; o.data[3] = record[12];}
+				currentFrame.ops ~= o;
+				totalOps++;
+				}
+
+			if(record[1] == "palette")
+				{
+				pop p;
+				p.index = cast(ubyte)record[9];
+				p.r = cast(ubyte)record[10];
+				p.g = cast(ubyte)record[11];
+				p.b = cast(ubyte)record[12];
+				currentFrame.pops ~= p;
+				totalPops++;
+				}
+				
 		}
 	frames ~= currentFrame; // last one onto the pile
 	}
+
+
+int totalOps=0;
+int totalPops=0;
+int opsRun = 0;
+int OpsPerDraw = 256;
+bool flipPerFrame = false;
 
 void drawData()
 	{
 	assert(canvas != null);	
 
-	int totalOps=0;
-	int opsRun=0;
-	bool flipPerFrame=false;
 	writeln("DRAWING DATA--------------------------------");
 	foreach(f; frames)
 		{
@@ -527,22 +589,31 @@ void drawData()
 		//al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
 		al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
 
-		writeln("FRAME ", f.frameNumber, " (", f.ops.length, " draw ops) ---------------------------------------------------------------");
-		totalOps += f.ops.length;
+		writefln("FRAME #%d (%d draw ops) (%d pops) -----------------------------------", f.frameNumber, f.ops.length, f.pops.length);
+//		writeln("FRAME ", f.frameNumber, " (", f.ops.length, " draw ops) ---------------------------------------------------------------");
+
+		// when drawing a frame we process any POPS first. (regardless of their timing within a frame, for simplicity)
+		foreach(p; f.pops) // note CLT persists across frames.
+			{
+			CLT[p.index].r = p.r;
+			CLT[p.index].g = p.g;
+			CLT[p.index].b = p.b;
+			} // NOTE: we may have to scale from 6 bits to 8 bits, like DOSBOX does, however, DOSBOX is already doing this somewhere and I might be logging those scaled values. see render.cpp:RENDER_SetPal() and vga_dac.cpp:76 calling scale_6_to_8(red)
+
 		foreach(o; f.ops)
 			{
-			float c1 = o.data[0]/256.0;
-			float c2 = o.data[1]/256.0;
+			int c1 = o.data[0];
+			int c2 = o.data[1];
 			int x = o.address % 320;
 			int y = o.address / 320;
-			al_put_pixel(x  , y, ALLEGRO_COLOR(c1, c1, c1, 1));
-			al_put_pixel(x+1, y, ALLEGRO_COLOR(c2, c2, c2, 1));
+			al_put_pixel(x  , y, al_map_rgb(CLT[c1].r, CLT[c1].g, CLT[c1].b));
+			al_put_pixel(x+1, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));
 			
 	//		writeln("write ", c1, " ", c2, " at ", x, " ", y, " addr[", o.address, "]");
 			opsRun++;
-			if(opsRun >= 256 && !flipPerFrame)
+			if(opsRun >= OpsPerDraw && !flipPerFrame)
 				{
-				al_unlock_bitmap(canvas);
+//				al_unlock_bitmap(canvas);
 //				writeln("vsync");
 
 				// now draw BOTH layers to [screen] separately, with tinting for newest additions
@@ -553,9 +624,8 @@ void drawData()
 //				al_draw_bitmap(canvasCombined, 0, 0, 0); //update screen with canvas draws so far
 //				al_draw_tinted_bitmap(canvas, ALLEGRO_COLOR(1,0,0,.5), 0, 0, 0); //newest canvas additions
 				float SCALE=3.5;
-				al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,1,1,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+				al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,1,1,1), 0, 0, canvasCombined.w, canvasCombined.h, 0, 0, canvasCombined.w*SCALE, canvasCombined.h*SCALE, 0);
 				al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
-
 				al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);
 				al_flip_display();
 	
@@ -582,35 +652,54 @@ void drawData()
 		if(flipPerFrame)
 			{
 			// In FRAME MODE, often the entire screen will be updated so we have to be careful not to tint everything...
-			al_unlock_bitmap(canvas); // finish drawing to [canvas]
+//			al_unlock_bitmap(canvas); // finish drawing to [canvas]
 			
 			// now draw BOTH layers to [screen] separately, with tinting for newest additions
 			al_set_target_backbuffer(al_display);
-//			al_draw_bitmap(canvasCombined, 0, 0, 0); //update screen with canvas draws so far
-float SCALE=4.0;
- al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
-//			al_draw_tinted_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, 0); //newest canvas additions
- al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+			al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
+			float SCALE=3.5;
+			al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,1,1,1), 0, 0, canvasCombined.w, canvasCombined.h, 0, 0, canvasCombined.w*SCALE, canvasCombined.h*SCALE, 0);
+			al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+			al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);			
 			al_flip_display();
 			
 			// now combine our old work into canvasCombined and clear the other canvas
 			al_set_target_bitmap(canvasCombined);
 			al_draw_bitmap(canvas, 0, 0, 0); // into canvasCombined
+			
+			if(f.frameNumber > 500)
+				{
+				al_save_bitmap(format("c%d.png", f.frameNumber).toStringz(), canvas);
+				al_save_bitmap(format("cc%d.png", f.frameNumber).toStringz(), canvasCombined);
+				}
+			// now clear canvas and go back to drawing
 			al_set_target_bitmap(canvas);
-			al_clear_to_color(black);
+			with(ALLEGRO_BLEND_MODE)
+				{
+				al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ZERO, ALLEGRO_ONE); // write alpha
+				al_clear_to_color(ALLEGRO_COLOR(0,0,0,0)); // clear our working [canvas] to transparent
+				al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
+				}
 			// now ready to start adding ops again
+			
 			}
 		}	
-	writeln("total frames: ", frames.length);
-	writeln("total ops: ", totalOps);
 	}
 
 void executeOnce()
 	{
+	auto sw3 = StopWatch();
+	sw3.start();
 	file = File("/home/novous/Desktop/git/dosbox-staging/build/release/output2.txt", "r");
 	parseData();
 	canvas = al_create_bitmap(320, 200);
 	canvasCombined = al_create_bitmap(320, 200);
 	assert(canvas != null);
+	sw3.stop();
+	writeln("total frames: ", frames.length);
+	writeln("total ops: ", totalOps);
+	writeln("total pops: ", totalPops);
+	float secs = (sw3.peek.total!"msecs")/1000.0;
+	writefln("[Parsing] Time elapsed %3.2f seconds [%3.2fs / frame] [%3.2f ops/sec]", secs, secs/frames.length, totalOps/secs);
 	}
 
