@@ -1,0 +1,11 @@
+#!/bin/sh
+dmd -debug -gs -g -ofmain `ls ./src/*.d` -L-L./lib/ 
+
+# we didn't need $@ https://stackoverflow.com/questions/3898665/what-is-in-bash
+#-vgc 
+#-release
+# -gc optmize for non-D debuggers
+# -O3 max debug (may allow others later)
+#  -march=<string>                   - Architecture to generate code for:
+#  -mattr=<a1,+a2,-a3,...>           - Target specific attributes (-mattr=help for details)
+#  -mcpu=<cpu-name>                  - Target a specific cpu type (-mcpu=help for details)

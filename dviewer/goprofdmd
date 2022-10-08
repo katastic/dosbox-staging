@@ -1,0 +1,7 @@
+#!/bin/sh
+#dmd -profile -profile=gc -debug -gs -g -ofmain main.d helper.d objects.d viewport.d g.d -L-L. $@
+dmd -profile -profile=gc -debug -gs -g -ofmain `ls ./src/*.d` -L-L./lib/ $@
+echo " * deleting old trace log files because they're cumulative."
+rm trace.log >> /dev/null 2>&1 
+rm trace.def >> /dev/null 2>&1
+rm profilegc.log >> /dev/null 2>&1

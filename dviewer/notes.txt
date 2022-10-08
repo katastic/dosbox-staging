@@ -1,0 +1,379 @@
+BUG/TODO
+--------------------------------
+
+	-> Sound
+		- music could be streamed instead of loaded once. Or screw it and load it into RAM.
+		
+	---> Are we drawing lighting to LIGHT ACCUMULATION BUFFER? Because we should. That would allow multiple light sources.
+
+	-> How do we tell UNIT TEAMs. The easiest (terrible) way will either have an icon, or tint all graphics.
+
+	- map contains unit lists
+	- party setup
+	- AI fights. AI A* pathfinding
+
+	- water. animated. also possible things like reflections.
+
+
+
+	- not sure if it matters but i tried making "top layer" sprites lit brighter. However, the same affect could have been prebaked by just using the same lighting function but making all non-top-layer sprites manually darker (in GIMP or preprocessing). 
+	Doesn't need to though. As for artistic taste, not sure it helps. It might a little.
+	- for "going through forest" we could also have objects just simply... dim. Which makes it easier for them to "hide" visually as well.
+	- also, didn't the game have some sort of "draw the outline ONLY" mode for inside forest? 
+	- we could also make moving more in the forest increases brightness allowing for hidden/sneaky enemies
+	
+	- we could also allow sneaky/hidden ambush enemies in general
+
+
+	- bullets going 1 tile past world in negative direction has been wierd. It appears to be a pair (float) -> ipair (int) issue however
+	why doesn't it affect units? I 'fixed' it by biasing negative values -31. Because -1 should be... the start of a negative tile -1. 
+	Not the start of negative 0th tile. 
+		- We don't use negative tiles, only for collision detection. But if we did, would this break something? If it was relative, 
+		negative tiles FROM MY LOCATION then it could be -0. Just keep that in mind. Or never use relative ipairs because who said
+		that was a thing?
+		- also, this might bias incorrectly for negatives but it wont affect us. just test to figure it out at leisure.
+
+	---> GETTING STUCK in unit.attemptMove is annoying as heck and needs fixed <---
+			-> only occurs with units
+				-> it was forgetting to add OFFSET into the test!
+
+	---> do we even need half-height tiles if were drawing / colliding from a centroid instead of bounding box?
+		--> Do BULLETS need to respect half-height? For now, just shotpassable.
+	
+	- remember unit atlas outlines aren't +1 yet. also, we could easily work around this by just forcing people to use textures with a +1 border since we're specifiying the coordinates ourselves anyway. but meh.
+
+	+ bullets are NOT HITTING ghosts (or any objects?) currently, but they hit walls.
+	+ by separating outline from graphics, we can now tint them for lighting OR for special effects like indicating 
+		active spells/potions (like flight/invulnerability) and it can change every frame without needing palette swapping
+		 like the original used.
+		 
+	- let players move "half high" on certain tiles
+		 
+	- lighting is NOT APPLIED to the blood DECAL LAYER and it's pretty hilarious seeing glowing blood off in the distance
+		- actually, i'm not sure the easiest way to add shading since it's one gigantic bitmap. We can't phong shade it. 
+		We could split it into texels and light that. But it'll be a bunch slower. If we switch to multiplative lighting, we can
+		simply draw it, and then "shade" around with lightmaps.
+			-> we could also start a shadowLayer bitmap layer where all light casting objects cast their brightness onto that, then after we draw everything, 
+			we dump the shadow map to it. That basically becomes deferred lighting and technically if we made it floating point, we could do HDR lighting.
+	
+	- "paint the walls with their blood" 
+		- there may be a way to draw like, the decal half high into tiles with a clipping plane so it looks like its up on the wall
+		but not on top of it. it would have to only work "above" the current character. not high up, from the side of a unit. Maybe
+		test for if its the bottom piece of a unpassable tile.
+		
+	- we could use other decal layers for FUN or combine them with blood. 
+		- When SEPARATE from blood layer, we can technically "clean" the layer. 
+			- a "fluids" (blood, slime goo) / "dirt" layer. Stuff that washes away with water magic. 
+				- (And could be used to "spread" around)
+				- dirt/mud/snow footsteps
+							
+			- nonwashable permanent decal stuff. "Pieces of broken equipment", permenant bodies that cannot be resurrected or
+			 interact with.
+				- combine with each map can have its own "SCENARIO DRAWN layer". So modders can make their own unique bottom
+				 layer stuff or MSPAINT worlds.
+
+			- if we have some sort of flammable material, that could have its own layer instead of drawing individual particles every frame. As long as they cannot be moved around.
+		
+			-> remember STATIC layers dont want to be massively modified or read from. Adding seems to be fairly fast though. 
+				- Dynamic decals for FEWER units (<1000's) that are drawn every frame and don't get worse if they move or
+					mutate every frame.
+		
+stuff to work on:
+--------------------------------
+	- different bullet graphics
+	- animated tiles. 
+	- tile metadata.
+	+ remember ELF SHOTS can go through forest too! not just elves! 
+		- Also walking in forest sapps mana.
+	
+	- we could do a "roof" layer for tree tops AND, if we drop that twice, once "behind" object layer, and then once half transparent after, we might be able to have "objects are transparent under roofs". Otherwise, just detect if we're under a tile and draw last transparently. It'll pop a bit but work.
+	
+	- not sure if we should let enemies pickup items. its kind of annoying.
+	
+	- how do we handle bosses/'named' enemies?
+		+ how do we draw the outline? (we could tint the whole thing white and stretch it slightly and draw under it, or pre-process the tint outlines)
+		- do we specify every boss in code, or use/allow SCENARIOS to specify enemies
+	
+	+ cooldown, unified system between call classes instead of each rolling their own
+		- convert all old codes
+	+ integrate blood map from dta
+	- atlas stuff
+	- items from glad:
+		- food, mana, flight, invisibility, invulnerability
+
+  - new dwarf class with arc mortar attack
+
+	- map game modes
+		- standard gladiator. destroy. find everything, sometimes with infinite spawners (skeletons/slimes), kill everything. leave when stuff is dead.
+		- defend a point. against waves of enemies. If you're not on the point, and enemy is on point, timer ticks down.
+		- Defend against waves. (but no caps)
+		- assault a position, hold a cap, while enemies infinite spawn.
+		
+			-- ISSUE with infinite spawning means they can infinite farm XP.
+				- workouts: "easy but ugly" a countdown timer that says if you don't cap in time, your mission objective is failed because of whatever.
+					- better? Barony timeout minotaur. A boss, or series of heavy-duty monsters that are "almost" immortal, show up and you have to run. Would make for interesting pacing but that might not be the fun people want. Sometimes, an RPG is having the fun to sit around and interact as much as you want till you decide to leave.
+
+
+
+
+mechanics
+-------------------------------
+	- one interesting openglad mechanic was all classes are affected by stats the same way. 100 DEX makes any class "100 DEX" fast at walking. However, different classes it's EASIER or HARDER to "train" in that stat. Elves can do DEX for "cheap" XP points. Soldiers maybe not so much. Mages (and Clerics) do INT for cheaps, soldiers not.
+
+	- could add RPG NPC stuff from games like MM6. Towns. Talk to people. Get quests. More contextual stuff may add flavor than just combat simulator.
+	- item upgrades? specific skill paths? powerups?
+
+	--> I like the "forgivable" mechanic of all deaths are just "unconscious" so as long as one makes it, your team survives (and you don't have to start over or pay tons to "resurrect" them.) That allows high-risk/high-reward (read: fun) ideas.
+	
+	--> 1-round TEMPORARY squads (mercenaries?) that you can blow your money on for WAY CHEAPER than hiring the same permenant guy?
+		- Mechanic: If you get stuck, hire mercenaries. SEND THEM TO THEIR DEATHS fun/funny.
+		- You hire mercenaries, lose money for THIS LEVEL but you overall don't get stuck unless you rely on them every map. So "save" some "merc points" on a level you're good at, so you can use it later.
+		
+		Merc points, vs money. separate cash pool can decouple the rest of ideas like XP leveling costs.
+
+
+
+programming notes
+------------
+	- ERROR HANDLING IS NOT OPT-IN. Do not design anything that requires you to REMEMBER to do it correctly. You WILL forget that bit of important information. It WILL happen. The less implied information you have to remember the more your brain is free to focus its brain on the complexity of the problem at hand--not the complexity of the interface itself. (see lower where Allegro should't ALLOW you to use itself without iniializing itself first. I think the OpenGL interface does this. You request a openglhandle 
+	which you use to get pointers to the functions you want. and this decoupling also means if the BINARY location of those functions changes with newer revisions of code/DLLs, the code 'should' still work.)
+
+
+	- if two values (like x and y) are LINKED and represent something like a POSITION. then MAKE THEM A OBJECT. and NAME IT.
+		al_draw_bitmap(bitmap, x=500, y=300, 0); // no.
+		drawBitmap(bitmap, pair(x,y), 0); // yes. NOW we know that this is some kind of position or a velocity.
+		
+		now watch as we scale up:
+		
+		al_draw_rectangle(bitmap, 32, 63, 20, 250, 230);
+		drawRectangle(bitmap, pair(32, 64), pair(20, 250), 20);  
+		
+		see how much easier that is broken up? You specifying THINGS, in this case positions, and not just numbers.
+		
+		it may not be "upper left, lower right" but it's super obvious we have two points now. And, in the function signature now we can name those variables pair upperLeft, pair upperRight instead of x1, y1, x2, y2.
+		
+	- name EVERYTHING
+		- variables. structures. and nested functions. THE CODE IS DOCUMENTATION. Instead of a block of code with a COMMENT above it describing what it does, replace that with a function that DESCRIBES what the code is doing.
+	- if you're using a language that doesn't have those features. Use a language that does. Or enjoy clunking rocks together to make a fire.
+	- The API SHOULD IMPLY both whats going on, and how to use it.
+	- You shouldn't BE ABLE TO use an API wrong.
+		- Allegro 5. instead of letting people call functions without first setting up an allegro_init():
+			- make allegro init return a CONTEXT and the ONLY way to even CALL allegro functions (that need allegro live first), is to use that CONTEXT to interact with them. And if the context is null? Congrats, it's obvious it failed to initialize.
+		- Don't over-generalize. Your code is going to be used. Make it work for that use and work to generalize it later. Don't start with some metaphorical abstract use case that works for literally everything but basically contributes to nothing because it has to cover 5000 edge cases. 
+
+	- don't assume the PERFORMANCE of what you CAN SEE, matters compared to what you CANNOT SEE.
+		- just because sending a bunch of structs means you'll be using pair[0] == x, pair[1] == y instead of just x,y in functions
+		(a single level of indirection) means NOTHING compared to the indirection you don't see: virtual functions, for 
+		example, but ORDERS OF A MAGNITUDE worse are a single call to a math function like SQRT and orders of a magnitude 
+		worse than that, DRAWING A BITMAP.
+		
+		If you can call 4 if statements, comparing floats to see if a bitmap is even on the screen before drawing it? For every bitmap?
+		that's "overhead" right? Wrong. Compared to the amount of logic that goes into drawing an Allegro bitmap, checking pixel formats, 
+		checking parent bitmaps, and actually drawing it? Nothing you do even comes close unless you're doing something terribly wrong like
+		using an O^3 formula.
+
+	- don't repeat yourself. Even in a function, use a nested function which now gives a NAME to that block of code you kept repeating.
+	- Even if you're using a more archiac language like C or C++, GCC (and LLVM) often times have extensions that add things like nested functions into the langauge outside of the spec.
+
+
+
+	--> Inheritance has its flaws and beware of baseGenericObject.
+		- lets say you have baseObject, unit, soldier, and bigSolder
+			- do we really need baseObject? I mean, how many non-unit objects NEED the same interface as units?
+			- every extra layer, means you have to EACH of those layers to ensure logic.
+			- Dangerous/difficult to ensure logic is called IN ORDER. Some things could be:
+			
+				child.do()
+					{
+					// super.do();  // BEFORE our stuff? parent setup code then we change the default
+					//my stuff 
+					// super.do(); // or AFTER our stuff? we change our stuff then call the base default!
+					}
+			
+			the answer is not always obvious
+			
+		- The diamond problem.
+			- And they say use composition and just add pieces you want. Instead of man, redman, bigman ,bigredman
+				just have 'man':
+					- and if you want a redman, he adds a pointer to a "red" handler.
+					- if you want a bigredman, add a pointer to a "big" handler and a "red" handler.
+			- However, not so clear what to do when things have to INTERACT. Now you need a common interface!
+				- You have 'sound's. Each soundhandler has a set of sounds. One for attack, one for hit, one for die, etc. 
+					- through common interface, physics code can say, call specific sounds.
+						- but now you've got to understand the usage and setup an interface so that these other pieces CAN use it!
+							---> often easier to make pieces (not TENS OF THOUSANDS of lines of code!) of "spaghetti" code, write whatever you need, as you see it (because you can't understand what you need before you even start writing the code!). Write the crap code, and then FORCE YOURSELF (through discipline and paradigms (2)) to rewrite it with a proper interface for further code. The danger is if you are too lazy, and keep writing, the more you're going to have to FIX later which means you'll be even more procrastinating to not change it. 
+							
+							(2) if you do something like write "bad" code, then use helpful type checking like GLOBAL interface 
+							markers (like g) and PRIVATE methods and fields that are no longer "good practice" to use (like manually spawning bullets instead of using a handler), then the COMPILER will help you.
+					
+					
+					
+		- BEWARE of any junctions that cross/break encapsulation!
+			- physics code directly calling sounds instead of requesting some handler do it.
+			- physics code directly SENDING NETWORK PACKETS is dangerous and error prone. 
+				- you change the ALGORITHM in your physics to optimize it and all a sudden NETWORK PACKETS aren't being sent at the same rate, or worse, at some very specific timing (now it's slightly earlier, or slightly later)!
+
+
+
+
+
+
+
+oriam notes
+------------
+
+	- metadata for texture atlas and isPassable
+
+	- pgymentizePrinter works but it writes to STDOUT itself. It also doesn't typesafe the input. Also formatting is broken and you have to manually use format() since its just using strings.
+		--> It might be possible to use a "persistentPrettyPrinter" (PPP?) with the pygments method because you can start a process
+		here and leave it running and pipe your input to it. (Though the harder part might be constantly getting data back without it closing.)  
+		
+			https://dlang.org/library/std/process/pipe_process.html
+			
+		- there are alternative syntax highlighters that are supposedly faster. CodeRay is ruby. there's rust ones. etc.
+			https://github.com/rubychan/shootout
+			benchmark
+			
+			
+	- create water splashes upon entering water tile
+			
+			
+
+	- If I'm doing IMPLIED viewport drawing, why am I passing viewport v's to everything?
+
+
+	- DEBUGGING with tagging. A debug channel (that can be piped to stdout + color) but it only applies to objects with the tag isDebugging (and we could use assert)
+	
+	
+	
+	+ generators
+	- multiple resources or just $$$
+
+
+
+
+	- what kind of "traps" protections do we have, because basically this is a horizontal tower defense game.
+	
+		- non-damaging types that do things like: 
+			- decrease speed (sludge)
+				- increase speed? (why? maybe for timing something)
+			- bait?
+			- burning traps? (that does damage, but also burning can be a debuff)
+			- wet traps (+wet)
+			- electrical traps (/w wet)
+			- oil traps? (+flammable, +sticky)
+			- ice traps? (+slow)
+			
+		contrast status effect turrets with primary turrets:
+
+			- arrow (anti-infantry, arc, anything straight line?)
+			- cannon (low arc)
+			- catapult/trebuchet (high arc)
+			- lightning tower? now it's just a normal tower defense game...
+
+
+	- we could have (certain) enemies DESTROY FORTIFICATIONS
+		- wood, stone, improved stone/metal gate/portcullis
+		
+		we could make the world HARDCODED and have traps let you extend out from that and block certian paths.
+		 the problem is we've gone far away from "Oriam".
+		 
+		Oriam could be more like "mario maker" where you can build any kind of world layout (with costs the more you change it from the starting setup, whether adding or subtracting). But if we have some sort of "value" function based on "my map layout"
+		that equates difficulty of monsters to get to home (A* path difficulty), then how we basically know the monsters will always
+		win or fail based on that value function.
+
+
+
+D notes
+--------------------------------------------------------------------------------
+ - scope(exit) statement; seems like an incredibly dumb and dangerous construct that 
+ ruins your normal flow of code worse than goto. You could easily have nested if statements that
+ "add" things onto the end of the code block and who knows which one gets called in which order!
+	their own example might have an error:
+		https://dlang.org/library/std/process/pipe_process.html	
+
+	there's TWO scope(exits)! But the first one needs(?) to get used up by time the second one is, but
+	the scopes should be at the end of the code block? Which might be doing a scope exit on the second 
+	variable reference, twice, instead of one on each.
+
+ - the first assignment of a variable in a constructor ... is actually an initializer. So the .init value is set. Any further uses will however be an [assignment] which could(?) have different effectss if you're say, initing then setting another class object inside your constructor.
+
+
+--------------------------------------------------------------------------------
+
+pygmentize -L
+
+Styles:
+~~~~~~~
+* default:
+    The default style (inspired by Emacs 22).
+* emacs:
+    The default style (inspired by Emacs 22).
+* friendly:
+    A modern style based on the VIM pyte theme.
+* colorful:
+    A colorful style, inspired by CodeRay.
+* autumn:
+    A colorful style, inspired by the terminal highlighting style.
+* murphy:
+    Murphy's style from CodeRay.
+* manni:
+    A colorful style, inspired by the terminal highlighting style.
+* monokai:
+    This style mimics the Monokai color scheme.
+* perldoc:
+    Style similar to the style used in the perldoc code blocks.
+* pastie:
+    Style similar to the pastie default style.
+* borland:
+    Style similar to the style used in the borland IDEs.
+* trac:
+    Port of the default trac highlighter design.
+* native:
+    Pygments version of the "native" vim theme.
+* fruity:
+    Pygments version of the "native" vim theme.
+* bw:
+    
+* vim:
+    Styles somewhat like vim 7.0
+* vs:
+    
+* tango:
+    The Crunchy default Style inspired from the color palette from the Tango Icon Theme Guidelines.
+* rrt:
+    Minimalistic "rrt" theme, based on Zap and Emacs defaults.
+* xcode:
+    Style similar to the Xcode default colouring theme.
+* igor:
+    Pygments version of the official colors for Igor Pro procedures.
+* paraiso-light:
+    
+* paraiso-dark:
+    
+* lovelace:
+    The style used in Lovelace interactive learning environment. Tries to avoid the "angry fruit salad" effect with desaturated and dim colours.
+* algol:
+    
+* algol_nu:
+    
+* arduino:
+    The Arduino® language style. This style is designed to highlight the Arduino source code, so exepect the best results with it.
+* rainbow_dash:
+    A bright and colorful syntax highlighting theme.
+* abap:
+    
+* solarized-dark:
+    The solarized style, dark.
+* solarized-light:
+    The solarized style, light.
+* sas:
+    Style inspired by SAS' enhanced program editor. Note This is not meant to be a complete style. It's merely meant to mimic SAS' program editor syntax highlighting.
+* stata:
+    Light mode style inspired by Stata's do-file editor. This is not meant to be a complete style, just for use with Stata.
+* stata-light:
+    Light mode style inspired by Stata's do-file editor. This is not meant to be a complete style, just for use with Stata.
+* stata-dark:
+    
+* inkpot:
+    

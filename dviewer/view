@@ -1,0 +1,16 @@
+#!/bin/bash
+columns=$(tput cols)
+cat trace.log profilegc.log | sed -e 's/pure //' -e 's/nothrow //' -e 's/@safe //' -e 's/\@nogc //' -e 's/@property //' -e 's/@trusted //' | sed -ne '/=====/,$ p' | sed 's/ *$//g' | cut -c -${columns} | tr -cd '\11\12\15\40-\176' |  pygmentize -l d | less -r
+
+
+# sed 's/ *$//g'` |
+# remove extra attribute variables that clutter up display with sed
+# pygmentize is a syntax colorizer set to use the d (l)exer
+# used tr to remove nonprintable characters that sometimes(???) get printed by DMD and explode the output.
+#    from https://alvinalexander.com/blog/post/linux-unix/how-remove-non-printable-ascii-characters-file-unix/
+
+
+# display only lines after '===== Timer frequency'
+# https://stackoverflow.com/questions/32569032/sed-print-all-lines-after-match
+
+# cut to terminal width!

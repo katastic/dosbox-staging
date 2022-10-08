@@ -1,0 +1,7 @@
+core
+*.o
+trace.def
+trace.log
+profilegc.log
+callgrind.out.*
+allegro.log

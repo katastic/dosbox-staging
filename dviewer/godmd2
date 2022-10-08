@@ -1,0 +1,10 @@
+rdmd -debug -gs -g -L-L./lib/ './src/main.d'
+
+# NOTE: File is executed in a temporary directory. It will NOT update ./main executable file like godmd!
+
+
+# why doesn't this need multiple source files? Is it traversing the module imports automatically?
+
+# work in progress
+#!/bin/sh
+#for f in ./src/*.d; do dmd -c $f -L-L./lib/; done
