@@ -647,8 +647,38 @@ void parseData()
 		}
 	frames ~= currentFrame; // last one onto the pile
 	}
+
+/// see here for JASC palettes https://lospec.com/palette-list/tag/8bit
+void loadJASCPalette(string path)	// one site says JASC palettes have .BIN format. From Paintshop Pro.
+	{
+	import std.stdio;
+	import std.file;
+	import std.array : split;
+	import std.conv;
+	string line;
+	auto fd = new File(path, "r");
+	int i = 0;
+	while ((line = fd.readln!string()) !is null) //https://forum.dlang.org/post/tbpmhkjjnqqxhsdzguls@forum.dlang.org
+		{
+		line = line.strip;
+//		writeln("[",line,"]"); debug
+		if(i == 0)assert(line == "JASC-PAL");
+		//if(i == 1)assert(line == "0100"); version number? Not important
+		if(i == 2)assert(line == "256");
+		if(i > 2)
+			{
+			string[3] data = line.split(" ");
+//			writeln(i-3, " = ", data); debug
+			CLT[i-3].r = to!ubyte(data[0]);
+			CLT[i-3].g = to!ubyte(data[1]);
+			CLT[i-3].b = to!ubyte(data[2]);
+			}
+		i++;
+		}
+	}
 	
-void loadPalette(string path)
+/// see here for JASC palettes https://lospec.com/palette-list/tag/8bit
+void loadPalette(string path) // raw palette. which our website appears NOT to be giving us?! some wierd 2048 byte (2048/256 = 8 bytes per value?!)
 	{
 	import std.file;
 	auto fd = new File(path, "r");
@@ -656,11 +686,12 @@ void loadPalette(string path)
 		{
 		ubyte[3] data;		
 		fd.rawRead(data);
-		
-		CLT[i].r = data[0];
-		CLT[i].g = data[1];
-		CLT[i].b = data[2];
+		writeln(data);
+		CLT[i].r = cast(ubyte)(data[0]);
+		CLT[i].g = cast(ubyte)(data[1]);
+		CLT[i].b = cast(ubyte)(data[2]);
 		}
+	
 	}
 
 void drawData()
@@ -706,6 +737,8 @@ void drawData()
 			assert(y >= 0);
 			if(doReorder)
 				{
+				// ---> we might need to do a 2D re-ordering. 4 screens = 0,0; 0,1; 1,0; 1,1. pushed out across a square.
+				
 				// x = (x*20 + x/(320/20))%320;
 				// x = (x*80 + x)%320;		
 				// x = (x%4)*80 + x/4; // nope. this splits 4 into 16
@@ -858,7 +891,7 @@ void drawData()
 
 void executeOnce()
 	{
-	loadPalette("./data/hocus-pocus.hex");
+	loadJASCPalette("./data/windows-95-256-colours.pal");
 		
 	auto sw3 = StopWatch();
 	sw3.start();
