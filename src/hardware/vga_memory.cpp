@@ -526,7 +526,7 @@ public:
 		}
 		writeCache_dword(addr, val);
 
-		const int NUM_BYTES = 2;
+		const int NUM_BYTES = 4;
 		printf("%d,hello12d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3));
@@ -558,7 +558,12 @@ public:
 		addr = CHECKED2(addr);
 		MEM_CHANGED( addr << 2 );
 		writeHandler(addr+0,(uint8_t)(val >> 0));
-		printf("hello13\n");
+		//printf("hello13\n");
+		
+		const int NUM_BYTES = 1;
+		printf("%d,hello13b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), -1, -1, -1);
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -569,7 +574,10 @@ public:
 		MEM_CHANGED( addr << 2);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
-	printf("hello14\n");
+		const int NUM_BYTES = 2;
+		printf("%d,hello14w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), -1, -1);
 		}
 
 	void writed(PhysPt addr, uint32_t val)
@@ -582,7 +590,11 @@ public:
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
-		printf("hello15\n");
+		//printf("hello15\n");
+		const int NUM_BYTES = 4;
+		printf("%d,hello15d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3));
 	}
 };
 
