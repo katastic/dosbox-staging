@@ -228,6 +228,7 @@ void mouseRight()
 void execute()
 	{
 	bool once=false;
+	bool isSpacePressed=false;
 	if(!once){executeOnce(); once = true;}
 	ALLEGRO_EVENT event;
 		
@@ -257,7 +258,13 @@ void execute()
 	bool exit = false;
 	while(!exit)
 		{
-			drawData();
+		drawData();
+		if(!isPaused)currentFrameBeingDrawn++;
+		if(isSpacePressed)
+			{
+			isPaused = !isPaused;
+			isSpacePressed = false;
+			}
 
 		while(al_get_next_event(queue, &event))
 			{
@@ -271,6 +278,7 @@ void execute()
 				case ALLEGRO_EVENT_KEY_DOWN:
 					{						
 					isKeySet(KEY_ESCAPE, exit);
+					isKeySet(KEY_SPACE, isSpacePressed);
 					keyPressed[event.keyboard.keycode] = true;
 					break;
 					}
@@ -517,6 +525,7 @@ int opsRun = 0;
 int OpsPerDraw = 256;
 bool flipPerFrame = false;
 bool doReorder=true;
+bool isPaused=false;
 
 void parseData()
 	{
@@ -694,10 +703,12 @@ void loadPalette(string path) // raw palette. which our website appears NOT to b
 	
 	}
 
+int currentFrameBeingDrawn = 0;
+
 void drawData()
 	{	
 	assert(canvas != null);	
-	writeln("DRAWING DATA--------------------------------");
+	//writeln("DRAWING DATA--------------------------------");
 	/*
 	static ubyte i = 0;
 	i++;
@@ -709,7 +720,9 @@ void drawData()
 	al_draw_bitmap(canvas, 0, 0, 0); // into ^^^canvasCombined
 	al_flip_display();
 	*/
-	foreach(f; frames)
+	//foreach(f; frames)
+	if(currentFrameBeingDrawn > frames.length-1)currentFrameBeingDrawn = 0;
+	auto f = frames[currentFrameBeingDrawn];
 		{		
 		al_set_target_bitmap(canvas);
 		// al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
@@ -773,7 +786,7 @@ void drawData()
 				al_draw_pixel(x+3, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
 				}
 			
-			writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]");
+		//	writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
 			opsRun++;
 			if(opsRun >= OpsPerDraw && !flipPerFrame) // END OF OPS BATCH, TRIGGER A DRAW
 				{
