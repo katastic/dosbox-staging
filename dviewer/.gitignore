@@ -5,3 +5,4 @@ trace.log
 profilegc.log
 callgrind.out.*
 allegro.log
+frames/
