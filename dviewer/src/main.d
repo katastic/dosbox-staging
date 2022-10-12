@@ -1,4 +1,9 @@
 /+
+
+
+	OVERLAY. highlight a COLOR for each DRAW TYPE. (hello13b, vs hello14w, etc)
+
+
 	----> looks like in frame mode we're somehow still overwriting [canvasCombined] with zeros? 
 
 
@@ -43,7 +48,7 @@ import std.traits; // EnumMembers
 import std.datetime;
 import std.datetime.stopwatch : benchmark, StopWatch, AutoStart;
 
-pragma(lib, "dallegro5ldc");
+pragma(lib, "dallegro5dmd"); // HOLY GOD, make sure this is the right one. (ldc vs DMD) we should fix this for new project templates later to autodetect.
 
 version(ALLEGRO_NO_PRAGMA_LIB){}else{
 	pragma(lib, "allegro");	// these ARE in fact used.
@@ -68,8 +73,10 @@ import helper;
 import g;
 
 display_t display;
+bitmap* paletteAtlas;
 bitmap* canvas;
 bitmap* canvasCombined;
+bitmap* canvasCombinedReordered;
 
 //=============================================================================
 
@@ -113,7 +120,6 @@ static if (false) // MULTISAMPLING. Not sure if helpful.
 	if (!al_init_font_addon())       assert(0, "al_init_font_addon failed!");
 	if (!al_init_ttf_addon())        assert(0, "al_init_ttf_addon failed!");
 	if (!al_init_primitives_addon()) assert(0, "al_init_primitives_addon failed!");
-
 	
 	al_register_event_source(queue, al_get_display_event_source(al_display));
 	al_register_event_source(queue, al_get_keyboard_event_source());
@@ -204,14 +210,12 @@ struct display_t
 			else
 				return cast(float)stat[1] / (cast(float)stat[0] + cast(float)stat[1]) * 100.0;
 			}
-
 		}
 	}
 
 void logic()
 	{
 	}
-
 
 void mouseLeft()
 	{
@@ -371,7 +375,29 @@ void setupFloatingPoint()
 
 	}
 
+void drawPalette(float x, float y, float scale)
+	{	
+	bitmap* restore = al_get_target_bitmap();
+	
+	al_set_target_bitmap(paletteAtlas);
+	al_lock_bitmap(paletteAtlas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
+	for(ubyte i = 0; i < 16; i++)
+		for(ubyte j = 0; j < 16; j++)
+			{
+			ubyte idx = cast(ubyte)(i + j*16);
+			color c = al_map_rgb(CLT[idx].r, CLT[idx].g, CLT[idx].b);
+			al_put_pixel(i, j, c);
+			}	
+	al_unlock_bitmap(paletteAtlas);	
+	al_set_target_bitmap(restore);
+	
+	al_draw_tinted_scaled_bitmap(paletteAtlas, ALLEGRO_COLOR(1,1,1,1), 
+		0, 0, paletteAtlas.w, paletteAtlas.h, 
+		x, y, paletteAtlas.w*scale, paletteAtlas.h*scale, 0);	
+	}
+
 //=============================================================================
+string inputPath;
 int main(string [] args)
 	{
 	setupFloatingPoint();
@@ -381,11 +407,16 @@ int main(string [] args)
 		writeln("[",i, "] ", arg);
 		}
 		
-	if(args.length > 2)
+	if(args.length >= 2)
 		{
-		g.SCREEN_W = to!int(args[1]);
-		g.SCREEN_H = to!int(args[2]);
-		writeln("New resolution is ", g.SCREEN_W, "x", g.SCREEN_H);
+		writeln("args:", args);
+		inputPath = args[1];
+		//g.SCREEN_W = to!int(args[1]);
+		//g.SCREEN_H = to!int(args[2]);
+		//writeln("New resolution is ", g.SCREEN_W, "x", g.SCREEN_H);
+		}else{
+		writeln("args:", args, " using default path");
+		inputPath = "/home/novous/Desktop/git/dosbox-staging/build/output2.txt";
 		}
 
 	return al_run_allegro(
@@ -477,11 +508,23 @@ class frame
 frame[] frames;
 bool firstRun=true;
 int currentExpectedFrame = -1024;
+int firstFrameToRender = 1000;
 File file;
 frame currentFrame;
+int totalOps=0;
+int totalPops=0;
+int opsRun = 0;
+int OpsPerDraw = 256;
+bool flipPerFrame = false;
+bool doReorder=true;
 
 void parseData()
 	{
+	al_set_target_backbuffer(al_display);
+	al_draw_filled_rectangle(200, 200, 300, 300, blue);
+	drawPalette(1200, 0, 8);
+	al_flip_display();
+		
 		// for each frame, track the min and max, address touched.
 	writeln("PARSING CSV--------------------------------");
     foreach (record; file.byLine.joiner("\n").csvReader!(Tuple!(
@@ -521,6 +564,52 @@ void parseData()
 				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
 				currentFrame.ops ~= o;
 				totalOps++;
+				continue;
+				}
+						
+			if(record[1] == "hello12d")
+				{
+				op o;
+				o.address = record[7]; 
+				o.bytes = record[8];
+				currentFrame.width = record[3]; // NOTE frame settings
+				currentFrame.height = record[4];
+				if(o.bytes == 1) {o.data[0] = record[9];}
+				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
+				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
+				currentFrame.ops ~= o;
+				totalOps++;
+				continue;
+				}
+						
+			if(record[1] == "hello13b")
+				{
+				op o;
+				o.address = record[7]; 
+				o.bytes = record[8];
+				currentFrame.width = record[3]; // NOTE frame settings
+				currentFrame.height = record[4];
+				if(o.bytes == 1) {o.data[0] = record[9];}
+				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
+				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
+				currentFrame.ops ~= o;
+				totalOps++;
+				continue;
+				}
+				
+			if(record[1] == "hello14w")
+				{
+				op o;
+				o.address = record[7]; 
+				o.bytes = record[8];
+				currentFrame.width = record[3]; // NOTE frame settings
+				currentFrame.height = record[4];
+				if(o.bytes == 1) {o.data[0] = record[9];}
+				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
+				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
+				currentFrame.ops ~= o;
+				totalOps++;
+				continue;
 				}
 				
 			if(record[1] == "hello16b") 	// THIS IS VERY LIKELY TEXT.
@@ -534,28 +623,15 @@ void parseData()
 				if(o.bytes == 2) {assert(false);} //never more than 1 byte
 				if(o.bytes == 4) {assert(false);}
 				
-				if(false) currentFrame.ops ~= o; // lets NOT add these to our graphical packet op lists
+				if(false) currentFrame.ops ~= o; // ?Should we add these to our graphical packet op lists?
 				if(false) printf("%c", o.data[0]); // dump to stdout. So far this is all junk data. Maybe setting regs or something???
 				
 				// --> what if this is the palette???
 				
 				// record[13] in this packet is a MODE specifier (almost always zero)
+				continue;
 				}
 				
-			if(record[1] == "hello11w")
-				{
-				op o;
-				o.address = record[7]; 
-				o.bytes = record[8];
-				currentFrame.width = record[3]; // NOTE frame settings
-				currentFrame.height = record[4];
-				if(o.bytes == 1) {o.data[0] = record[9];}
-				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
-				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[10]; o.data[2] = record[11]; o.data[3] = record[12];}
-				currentFrame.ops ~= o;
-				totalOps++;
-				}
-
 			if(record[1] == "palette")
 				{
 				pop p;
@@ -565,32 +641,50 @@ void parseData()
 				p.b = cast(ubyte)record[12];
 				currentFrame.pops ~= p;
 				totalPops++;
+				continue;
 				}
 				
 		}
 	frames ~= currentFrame; // last one onto the pile
 	}
-
-
-int totalOps=0;
-int totalPops=0;
-int opsRun = 0;
-int OpsPerDraw = 256;
-bool flipPerFrame = false;
+	
+void loadPalette(string path)
+	{
+	import std.file;
+	auto fd = new File(path, "r");
+	for(int i = 0; i < 256; i++)
+		{
+		ubyte[3] data;		
+		fd.rawRead(data);
+		
+		CLT[i].r = data[0];
+		CLT[i].g = data[1];
+		CLT[i].b = data[2];
+		}
+	}
 
 void drawData()
-	{
+	{	
 	assert(canvas != null);	
-
 	writeln("DRAWING DATA--------------------------------");
+	/*
+	static ubyte i = 0;
+	i++;
+	al_set_target_bitmap(canvas);
+	al_draw_filled_rectangle(20, 20, 100, 100, al_map_rgb(i,i,i));
+	
+	al_set_target_backbuffer(al_display);
+	al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
+	al_draw_bitmap(canvas, 0, 0, 0); // into ^^^canvasCombined
+	al_flip_display();
+	*/
 	foreach(f; frames)
-		{
+		{		
 		al_set_target_bitmap(canvas);
-		//al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
-		al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
-
+		// al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
+		static if (false) al_clear_to_color(ALLEGRO_COLOR(1,0,0,1)); // reset the canvas
+		float SCALE=3.0;
 		writefln("FRAME #%d (%d draw ops) (%d pops) -----------------------------------", f.frameNumber, f.ops.length, f.pops.length);
-//		writeln("FRAME ", f.frameNumber, " (", f.ops.length, " draw ops) ---------------------------------------------------------------");
 
 		// when drawing a frame we process any POPS first. (regardless of their timing within a frame, for simplicity)
 		foreach(p; f.pops) // note CLT persists across frames.
@@ -602,38 +696,114 @@ void drawData()
 
 		foreach(o; f.ops)
 			{
-			int c1 = o.data[0];
-			int c2 = o.data[1];
+			if(f.frameNumber < firstFrameToRender)continue;
+			ubyte c1 = cast(ubyte)o.data[0];
+			ubyte c2, c3, c4;
 			int x = o.address % 320;
 			int y = o.address / 320;
-			al_put_pixel(x  , y, al_map_rgb(CLT[c1].r, CLT[c1].g, CLT[c1].b));
-			al_put_pixel(x+1, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));
+			assert(o.address >= 0);
+			assert(x >= 0);
+			assert(y >= 0);
+			if(doReorder)
+				{
+				// x = (x*20 + x/(320/20))%320;
+				// x = (x*80 + x)%320;		
+				// x = (x%4)*80 + x/4; // nope. this splits 4 into 16
+				// x = (x*80 + x/4)%320; now we've got 16.... but they're incrementing by 80...
+				// 	x = (x*80 + x/(320/80))%320;
+				/+
+						write 155 0 at 5 5 addr[1620]
+					  write 155 0 at 25 5 addr[1700]
+					  write 152 0 at 45 5 addr[1780]
+					  write 152 0 at 65 5 addr[1860]
+					  write 152 0 at 5 6 addr[1940]
+					  write 152 0 at 25 6 addr[2020]
+					  write 153 0 at 45 6 addr[2100]
+					  write 153 0 at 65 6 addr[2180]
+					  write 153 0 at 5 7 addr[2260]
+					  write 153 0 at 25 7 addr[2340]
+					  write 155 0 at 45 7 addr[2420]
+					  write 155 0 at 65 7 addr[2500]
+					+/
+				}
+			al_draw_pixel(x  , y, al_map_rgb(CLT[c1].r, CLT[c1].g, CLT[c1].b));
+			if(o.bytes >= 2)
+				{
+				c2 = cast(ubyte)o.data[1];
+				al_draw_pixel(x+1, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));	
+				}
+			if(o.bytes == 4) //4 bytes (there's no 3 byte messages)
+				{
+				c3 = cast(ubyte)o.data[2];
+				c4 = cast(ubyte)o.data[3];
+				al_draw_pixel(x+2, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
+				al_draw_pixel(x+3, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
+				}
 			
-	//		writeln("write ", c1, " ", c2, " at ", x, " ", y, " addr[", o.address, "]");
+			writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]");
 			opsRun++;
-			if(opsRun >= OpsPerDraw && !flipPerFrame)
+			if(opsRun >= OpsPerDraw && !flipPerFrame) // END OF OPS BATCH, TRIGGER A DRAW
 				{
 //				al_unlock_bitmap(canvas);
 //				writeln("vsync");
-
+				/*
+				if (doReorder)
+					{
+					if(firstFrame)
+						{
+						firstFrame = false; // do nothing. skip it. we haven't blitted to canvasCombined yet and that's our snoop target.
+						
+						}else{
+						al_set_target_bitmap(canvasCombinedReordered);
+						al_lock_bitmap(canvasCombined, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_READONLY);
+						al_lock_bitmap(canvasCombinedReordered, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
+					
+						with(ALLEGRO_BLEND_MODE)
+							{
+							al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ZERO, ALLEGRO_ONE); // write alpha
+							for(int j = 0; j < 200; j++)
+								for(int i = 0; i < 320; i++)
+									{
+									color c = al_get_pixel(canvasCombined, i, j);
+									int X = i;// %4 + i%80 - i/80;
+									int Y = j;
+									al_put_pixel(X, Y, c);  //320/4 wide = 80
+									writeln(i, " = ", X,",",Y, " set to:", c);
+									}													
+							al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
+							}
+						
+						al_unlock_bitmap(canvasCombinedReordered);
+						al_unlock_bitmap(canvasCombined);
+						}
+					}					
+				*/
 				// now draw BOTH layers to [screen] separately, with tinting for newest additions
+				// ------------------------------------------------------------------------------------------------
 				al_set_target_backbuffer(al_display);
-				al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
-//				al_save_bitmap("canvasCombined.bmp", canvasCombined);
-//				al_save_bitmap("canvas.bmp", canvas);
-//				al_draw_bitmap(canvasCombined, 0, 0, 0); //update screen with canvas draws so far
-//				al_draw_tinted_bitmap(canvas, ALLEGRO_COLOR(1,0,0,.5), 0, 0, 0); //newest canvas additions
-				float SCALE=3.5;
-				al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,1,1,1), 0, 0, canvasCombined.w, canvasCombined.h, 0, 0, canvasCombined.w*SCALE, canvasCombined.h*SCALE, 0);
-				al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
-				al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);
+					al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));			
+					
+					al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,1,1,1), 0, 0, canvasCombined.w, canvasCombined.h, 0, 0, canvasCombined.w*SCALE, canvasCombined.h*SCALE, 0);
+					al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,.5,.5,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+					
+					drawPalette(1200, 0, 8);
+					al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);
 				al_flip_display();
-	
+
+				// ------------------------------------------------------------------------------------------------
+				if(f.frameNumber > 900)
+					{
+					al_save_bitmap(format("frames/c%d.png", f.frameNumber).toStringz(), canvas);
+					al_save_bitmap(format("frames/cc%d.png", f.frameNumber).toStringz(), canvasCombined);
+					}
+					
 				// now combine our old work into canvasCombined and then clear the other canvas
+				// ------------------------------------------------------------------------------------------------
 				al_set_target_bitmap(canvasCombined);
-				al_draw_bitmap(canvas, 0, 0, 0); // into ^^^canvasCombined
-					// WAIT, won't this overwrite canvasCombined?
+				al_draw_bitmap(canvas, 0, 0, 0); // into ^^^canvasCombined								
+					
 				// Start of next run, clear canvas:
+				// ------------------------------------------------------------------------------------------------
 				al_set_target_bitmap(canvas);
 		//		al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
 				with(ALLEGRO_BLEND_MODE)
@@ -642,13 +812,11 @@ void drawData()
 					al_clear_to_color(ALLEGRO_COLOR(0,0,0,0)); // clear our working [canvas] to transparent
 					al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
 					}
-
-			//	al_reset_target();
-		//		al_clear_to_color(black);
-//				al_flip_display(); //otherwise we're drawing to random page flips in memory and flickering
+				
 				opsRun = 0;
 				}// how many draws to 
 			}
+			
 		if(flipPerFrame)
 			{
 			// In FRAME MODE, often the entire screen will be updated so we have to be careful not to tint everything...
@@ -656,10 +824,12 @@ void drawData()
 			
 			// now draw BOTH layers to [screen] separately, with tinting for newest additions
 			al_set_target_backbuffer(al_display);
-			al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
-			float SCALE=3.5;
+			al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));			
+		
 			al_draw_tinted_scaled_bitmap(canvasCombined, ALLEGRO_COLOR(1,1,1,1), 0, 0, canvasCombined.w, canvasCombined.h, 0, 0, canvasCombined.w*SCALE, canvasCombined.h*SCALE, 0);
 			al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
+					
+			drawPalette(600, 0, 4);
 			al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);			
 			al_flip_display();
 			
@@ -667,7 +837,7 @@ void drawData()
 			al_set_target_bitmap(canvasCombined);
 			al_draw_bitmap(canvas, 0, 0, 0); // into canvasCombined
 			
-			if(f.frameNumber > 500)
+			if(f.frameNumber > 900)
 				{
 				al_save_bitmap(format("c%d.png", f.frameNumber).toStringz(), canvas);
 				al_save_bitmap(format("cc%d.png", f.frameNumber).toStringz(), canvasCombined);
@@ -683,17 +853,40 @@ void drawData()
 			// now ready to start adding ops again
 			
 			}
-		}	
+		}
 	}
 
 void executeOnce()
 	{
+	loadPalette("./data/hocus-pocus.hex");
+		
 	auto sw3 = StopWatch();
 	sw3.start();
-	file = File("/home/novous/Desktop/git/dosbox-staging/build/release/output2.txt", "r");
+	file = File(inputPath, "r");
+
+	if(doReorder)
+		{
+		writeln("Using [REORDERED] drawing");
+		}else{
+		writeln("Using [normal] drawing");
+		}
+	
+	if(flipPerFrame)
+		{
+		writeln(" - flipPerFrame = ON");		
+		}else{
+		writeln(" - flipPerFrame = OFF");	
+		}						
+
+	
+	int w=320;
+	int h=200;
+	canvas = al_create_bitmap(w, h);
+	canvasCombined = al_create_bitmap(w, h);
+	canvasCombinedReordered = al_create_bitmap(w, h);
+	paletteAtlas = al_create_bitmap(16, 16);
+
 	parseData();
-	canvas = al_create_bitmap(320, 200);
-	canvasCombined = al_create_bitmap(320, 200);
 	assert(canvas != null);
 	sw3.stop();
 	writeln("total frames: ", frames.length);
