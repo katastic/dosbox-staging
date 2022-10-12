@@ -1,1 +1,1 @@
-meson compile -C build/release
+meson compile -C build
