@@ -1,3 +1,20 @@
+
+// ---> TODO: Separate parseData from playData so we can loop
+float SCALE=2.0;
+frame[] frames;
+bool firstRun=true;
+int currentExpectedFrame = -1024;
+int firstFrameToRender = 1000;
+File file;
+frame currentFrame;
+int totalOps=0;
+int totalPops=0;
+int opsRun = 0;
+int OpsPerDraw = 256;
+bool flipPerFrame = false;
+bool doReorder=true;
+bool isPaused=false;
+
 /+
 
 
@@ -229,6 +246,8 @@ void execute()
 	{
 	bool once=false;
 	bool isSpacePressed=false;
+	bool isEPressed=false;
+	bool isQPressed=false;
 	if(!once){executeOnce(); once = true;}
 	ALLEGRO_EVENT event;
 		
@@ -265,6 +284,18 @@ void execute()
 			isPaused = !isPaused;
 			isSpacePressed = false;
 			}
+		if(isEPressed)
+			{
+			currentFrameBeingDrawn++;
+			// overrunning it is handled in the draw function.
+			isEPressed = false;
+			}
+		if(isQPressed)
+			{
+			currentFrameBeingDrawn--;
+			if(currentFrameBeingDrawn < 0)currentFrameBeingDrawn = frames.length - 1;
+			isQPressed = false;
+			}
 
 		while(al_get_next_event(queue, &event))
 			{
@@ -279,6 +310,8 @@ void execute()
 					{						
 					isKeySet(KEY_ESCAPE, exit);
 					isKeySet(KEY_SPACE, isSpacePressed);
+					isKeySet(KEY_E, isEPressed);
+					isKeySet(KEY_Q, isQPressed);
 					keyPressed[event.keyboard.keycode] = true;
 					break;
 					}
@@ -512,21 +545,6 @@ class frame
 		}
 	}
 
-// ---> TODO: Separate parseData from playData so we can loop
-frame[] frames;
-bool firstRun=true;
-int currentExpectedFrame = -1024;
-int firstFrameToRender = 1000;
-File file;
-frame currentFrame;
-int totalOps=0;
-int totalPops=0;
-int opsRun = 0;
-int OpsPerDraw = 256;
-bool flipPerFrame = false;
-bool doReorder=true;
-bool isPaused=false;
-
 void parseData()
 	{
 	al_set_target_backbuffer(al_display);
@@ -703,7 +721,7 @@ void loadPalette(string path) // raw palette. which our website appears NOT to b
 	
 	}
 
-int currentFrameBeingDrawn = 0;
+ulong currentFrameBeingDrawn = 0;
 
 void drawData()
 	{	
@@ -727,7 +745,7 @@ void drawData()
 		al_set_target_bitmap(canvas);
 		// al_lock_bitmap(canvas, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
 		static if (false) al_clear_to_color(ALLEGRO_COLOR(1,0,0,1)); // reset the canvas
-		float SCALE=3.0;
+		
 		writefln("FRAME #%d (%d draw ops) (%d pops) -----------------------------------", f.frameNumber, f.ops.length, f.pops.length);
 
 		// when drawing a frame we process any POPS first. (regardless of their timing within a frame, for simplicity)
@@ -750,6 +768,18 @@ void drawData()
 			assert(y >= 0);
 			if(doReorder)
 				{
+				writeln("x,y was ", x,",",y);
+				
+				const int s = 2;
+																		
+				if		 (	   		     x < 80){x = x*s; 			    y = y*s + 0;} 
+				  else if(x >= 80   && x < 80*2){x = x*s + -80*s*1 + 1;	y = y*2 + 0;}
+				  else if(x >= 80*2 && x < 80*3){x = x*s + -80*s*2 + 0;	y = y*2 + 1;}
+				  else if(x >= 80*3 && x < 80*4){x = x*s + -80*s*3 + 1;	y = y*2 + 1;}
+				writeln("x,y  is ", x,",",y);
+				//assert(x < 320);
+				//assert(y < 200);
+				//y *= 2;
 				// ---> we might need to do a 2D re-ordering. 4 screens = 0,0; 0,1; 1,0; 1,1. pushed out across a square.
 				
 				// x = (x*20 + x/(320/20))%320;
@@ -786,7 +816,7 @@ void drawData()
 				al_draw_pixel(x+3, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
 				}
 			
-		//	writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
+			writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
 			opsRun++;
 			if(opsRun >= OpsPerDraw && !flipPerFrame) // END OF OPS BATCH, TRIGGER A DRAW
 				{
@@ -833,7 +863,8 @@ void drawData()
 					al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,.5,.5,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
 					
 					drawPalette(1200, 0, 8);
-					al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);
+					al_draw_textf(font1, red, 1000, 10, 0, "FRAME %d", f.frameNumber);
+					al_draw_textf(font1, red, 1000, 28, 0, "index %d", currentFrameBeingDrawn);
 				al_flip_display();
 
 				// ------------------------------------------------------------------------------------------------
@@ -925,8 +956,8 @@ void executeOnce()
 		}						
 
 	
-	int w=320;
-	int h=200;
+	int w=640;
+	int h=400;
 	canvas = al_create_bitmap(w, h);
 	canvasCombined = al_create_bitmap(w, h);
 	canvasCombinedReordered = al_create_bitmap(w, h);
