@@ -579,6 +579,42 @@ void parseData()
 				currentFrame.frameNumber = currentExpectedFrame; // setup struct
 				}
 			
+			
+			switch(record[1])
+				{
+				case "hello10b":
+				case "hello11w":
+				case "hello12d":
+				case "hello13b":
+				case "hello14w":
+				case "hello16b":	// NOTE: 16b we're tossing a (text) mode byte on the end. (mode#=set color, set glyph, set etc) not being used yet.
+					op o;
+					o.address = record[7]; 
+					o.bytes = record[8];
+					currentFrame.width = record[3]; // NOTE frame settings
+					currentFrame.height = record[4];
+					if(o.bytes == 1) {o.data[0] = record[9];}
+					if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
+					if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
+					currentFrame.ops ~= o;
+					totalOps++;
+				break;
+				case "palette":
+					pop p;
+					p.index = cast(ubyte)record[9];
+					p.r = cast(ubyte)record[10];
+					p.g = cast(ubyte)record[11];
+					p.b = cast(ubyte)record[12];
+					currentFrame.pops ~= p;
+					totalPops++;
+				break;
+				default:
+					writeln("WARNING: UNHANDLED PACKET TYPE ", record[1]);
+				break;
+				}
+									
+				
+				/+
 			if(record[1] == "hello11w")
 				{
 				op o;
@@ -658,19 +694,7 @@ void parseData()
 				// record[13] in this packet is a MODE specifier (almost always zero)
 				continue;
 				}
-				
-			if(record[1] == "palette")
-				{
-				pop p;
-				p.index = cast(ubyte)record[9];
-				p.r = cast(ubyte)record[10];
-				p.g = cast(ubyte)record[11];
-				p.b = cast(ubyte)record[12];
-				currentFrame.pops ~= p;
-				totalPops++;
-				continue;
-				}
-				
+		+/
 		}
 	frames ~= currentFrame; // last one onto the pile
 	}
