@@ -1,10 +1,12 @@
 
-// ---> TODO: Separate parseData from playData so we can loop
-float SCALE=2.0;
+uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but not draw anything. So we can setup palette, and also skip to specific sections
+uint CONFIG_frameToEnd = 0; //if higher than -1, we'll restart at X. [NYI]
+int canvasW = 1366;	// canvas size
+int canvasH = 768;	// ''
+float SCALE=3.0;
 frame[] frames;
 bool firstRun=true;
 int currentExpectedFrame = -1024;
-int firstFrameToRender = 1000;
 File file;
 frame currentFrame;
 int totalOps=0;
@@ -12,13 +14,33 @@ int totalPops=0;
 int opsRun = 0;
 int OpsPerDraw = 256;
 bool flipPerFrame = false;
-bool doReorder=true;
+bool doReorder=false;
 bool isPaused=false;
 
 /+
 
+	---> We might need to swap to a binary output format from DOSBOX if simply because the CSVs are so huge that D's built-in CSV handler chokes on them significantly enough to impact the testing cycle.
+		- sqlite:
+			https://wiki.dlang.org/Database_Libraries	
+		- custom: our packet structure is SUPER SIMPLE. In fact, identical for all ATM so we only really need a one-size-fits-all [array-length strings] + ints
 
-	OVERLAY. highlight a COLOR for each DRAW TYPE. (hello13b, vs hello14w, etc)
+	--> also, CSVs are freakin' HUGE. The flaw, however, is we can no longer [[grep]] through files.
+
+
+	- start/ending frame indicators still won't help the CSV parse faster.
+
+
+	[ ] GUI indicators for draw type, or pop
+		
+		WRITING		[
+			[x] 1 byte		[ ] pop
+			[ ] 2 bytes		[ ] sop
+			[ ] 4 bytes		[ ] text
+
+	[+] TODO: Separate parseData from playData so we can loop
+	
+	[ ] OVERLAY. highlight a COLOR for each DRAW TYPE. (hello13b, vs hello14w, etc)
+	[ ] or, allow highlighting only a specific draw type [would have to decouple canvas, canvasCombined, into highlightedCanvas+canvas -> canvasCombined]
 
 
 	----> looks like in frame mode we're somehow still overwriting [canvasCombined] with zeros? 
@@ -26,7 +48,7 @@ bool isPaused=false;
 
 	- not directly storing SOPS system operations like vsync. it's implicit in the frame boundary. assuming we actually have the right frame boundary trigger.
 
-	- GET STARTING PALETTE SOMEWHERE 
+	[x] - GET STARTING PALETTE SOMEWHERE  [probably default windows one and not IBM BIOS but whatever]
 
 	- [GUI] let us PAUSE THE DRAWING [also allow keyboard input during], as well as BACKUP A FRAME and move FORWARD a frame, and draw JUST [canvas] or [canvasCombined]
 		- let us change the [op] batch size, or view frame mode.
@@ -312,6 +334,16 @@ void execute()
 					isKeySet(KEY_SPACE, isSpacePressed);
 					isKeySet(KEY_E, isEPressed);
 					isKeySet(KEY_Q, isQPressed);
+					if(isKey(KEY_1))currentFrameBeingDrawn = cast(ulong)(frames.length * .10);
+					if(isKey(KEY_2))currentFrameBeingDrawn = cast(ulong)(frames.length * .20);
+					if(isKey(KEY_3))currentFrameBeingDrawn = cast(ulong)(frames.length * .30);
+					if(isKey(KEY_4))currentFrameBeingDrawn = cast(ulong)(frames.length * .40);
+					if(isKey(KEY_5))currentFrameBeingDrawn = cast(ulong)(frames.length * .50);
+					if(isKey(KEY_6))currentFrameBeingDrawn = cast(ulong)(frames.length * .60);
+					if(isKey(KEY_7))currentFrameBeingDrawn = cast(ulong)(frames.length * .70);
+					if(isKey(KEY_8))currentFrameBeingDrawn = cast(ulong)(frames.length * .80);
+					if(isKey(KEY_9))currentFrameBeingDrawn = cast(ulong)(frames.length * .90);
+					if(isKey(KEY_0))currentFrameBeingDrawn = 0;
 					keyPressed[event.keyboard.keycode] = true;
 					break;
 					}
@@ -455,6 +487,13 @@ int main(string [] args)
 		//g.SCREEN_W = to!int(args[1]);
 		//g.SCREEN_H = to!int(args[2]);
 		//writeln("New resolution is ", g.SCREEN_W, "x", g.SCREEN_H);
+		
+		if(args.length >= 3)
+			{
+			CONFIG_frameToStartDrawing = to!uint(args[2]);
+			writeln("Starting rendering at frame [", CONFIG_frameToStartDrawing, "]");
+			}
+		
 		}else{
 		writeln("args:", args, " using default path");
 		inputPath = "/home/novous/Desktop/git/dosbox-staging/build/output2.txt";
@@ -611,90 +650,7 @@ void parseData()
 				default:
 					writeln("WARNING: UNHANDLED PACKET TYPE ", record[1]);
 				break;
-				}
-									
-				
-				/+
-			if(record[1] == "hello11w")
-				{
-				op o;
-				o.address = record[7]; 
-				o.bytes = record[8];
-				currentFrame.width = record[3]; // NOTE frame settings
-				currentFrame.height = record[4];
-				if(o.bytes == 1) {o.data[0] = record[9];}
-				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
-				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
-				currentFrame.ops ~= o;
-				totalOps++;
-				continue;
-				}
-						
-			if(record[1] == "hello12d")
-				{
-				op o;
-				o.address = record[7]; 
-				o.bytes = record[8];
-				currentFrame.width = record[3]; // NOTE frame settings
-				currentFrame.height = record[4];
-				if(o.bytes == 1) {o.data[0] = record[9];}
-				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
-				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
-				currentFrame.ops ~= o;
-				totalOps++;
-				continue;
-				}
-						
-			if(record[1] == "hello13b")
-				{
-				op o;
-				o.address = record[7]; 
-				o.bytes = record[8];
-				currentFrame.width = record[3]; // NOTE frame settings
-				currentFrame.height = record[4];
-				if(o.bytes == 1) {o.data[0] = record[9];}
-				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
-				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
-				currentFrame.ops ~= o;
-				totalOps++;
-				continue;
-				}
-				
-			if(record[1] == "hello14w")
-				{
-				op o;
-				o.address = record[7]; 
-				o.bytes = record[8];
-				currentFrame.width = record[3]; // NOTE frame settings
-				currentFrame.height = record[4];
-				if(o.bytes == 1) {o.data[0] = record[9];}
-				if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
-				if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
-				currentFrame.ops ~= o;
-				totalOps++;
-				continue;
-				}
-				
-			if(record[1] == "hello16b") 	// THIS IS VERY LIKELY TEXT.
-				{
-				op o;
-				o.address = record[7]; 
-				o.bytes = record[8];
-				currentFrame.width = record[3]; // NOTE frame settings
-				currentFrame.height = record[4];
-				if(o.bytes == 1) {o.data[0] = record[9];}
-				if(o.bytes == 2) {assert(false);} //never more than 1 byte
-				if(o.bytes == 4) {assert(false);}
-				
-				if(false) currentFrame.ops ~= o; // ?Should we add these to our graphical packet op lists?
-				if(false) printf("%c", o.data[0]); // dump to stdout. So far this is all junk data. Maybe setting regs or something???
-				
-				// --> what if this is the palette???
-				
-				// record[13] in this packet is a MODE specifier (almost always zero)
-				continue;
-				}
-		+/
+				}								
 		}
 	frames ~= currentFrame; // last one onto the pile
 	}
@@ -742,27 +698,13 @@ void loadPalette(string path) // raw palette. which our website appears NOT to b
 		CLT[i].g = cast(ubyte)(data[1]);
 		CLT[i].b = cast(ubyte)(data[2]);
 		}
-	
 	}
 
 ulong currentFrameBeingDrawn = 0;
 
 void drawData()
 	{	
-	assert(canvas != null);	
-	//writeln("DRAWING DATA--------------------------------");
-	/*
-	static ubyte i = 0;
-	i++;
-	al_set_target_bitmap(canvas);
-	al_draw_filled_rectangle(20, 20, 100, 100, al_map_rgb(i,i,i));
-	
-	al_set_target_backbuffer(al_display);
-	al_clear_to_color(ALLEGRO_COLOR(0,0,0,1));
-	al_draw_bitmap(canvas, 0, 0, 0); // into ^^^canvasCombined
-	al_flip_display();
-	*/
-	//foreach(f; frames)
+	assert(canvas != null);
 	if(currentFrameBeingDrawn > frames.length-1)currentFrameBeingDrawn = 0;
 	auto f = frames[currentFrameBeingDrawn];
 		{		
@@ -782,7 +724,7 @@ void drawData()
 
 		foreach(o; f.ops)
 			{
-			if(f.frameNumber < firstFrameToRender)continue;
+			if(f.frameNumber < CONFIG_frameToStartDrawing)continue;
 			ubyte c1 = cast(ubyte)o.data[0];
 			ubyte c2, c3, c4;
 			int x = o.address % 320;
@@ -792,39 +734,40 @@ void drawData()
 			assert(y >= 0);
 			if(doReorder)
 				{
-				writeln("x,y was ", x,",",y);
+				int nx = x;
 				
+				nx = (nx*4)%320 - (3 - 1*nx%320);
+				
+				x = nx;
+					
+					/*
+				int nx = 0;
+				if(			         x < 80*1)nx = x*4 - 80 + 0;
+				else if(x >= 80   && x < 80*2)nx = x*4 - 80*2 + 1;
+				else if(x >= 80*2 && x < 80*3)nx = x*4 - 80*3 + 2;
+				else if(x >= 80*3 && x < 80*4)nx = x*4 - 80*4 + 3;
+				x = nx;
+				writeln(x);
+				*/
+				//writeln("x,y was ", x,",",y);
+				/*
 				const int s = 2;
 																		
 				if		 (	   		     x < 80){x = x*s; 			    y = y*s + 0;} 
 				  else if(x >= 80   && x < 80*2){x = x*s + -80*s*1 + 1;	y = y*2 + 0;}
 				  else if(x >= 80*2 && x < 80*3){x = x*s + -80*s*2 + 0;	y = y*2 + 1;}
-				  else if(x >= 80*3 && x < 80*4){x = x*s + -80*s*3 + 1;	y = y*2 + 1;}
-				writeln("x,y  is ", x,",",y);
+				  else if(x >= 80*3 && x < 80*4){x = x*s + -80*s*3 + 1;	y = y*2 + 1;}*/
+//				writeln("x,y  is ", x,",",y);
 				//assert(x < 320);
 				//assert(y < 200);
 				//y *= 2;
 				// ---> we might need to do a 2D re-ordering. 4 screens = 0,0; 0,1; 1,0; 1,1. pushed out across a square.
 				
 				// x = (x*20 + x/(320/20))%320;
-				// x = (x*80 + x)%320;		
+				 // x = (x*80 + x)%320;		
 				// x = (x%4)*80 + x/4; // nope. this splits 4 into 16
 				// x = (x*80 + x/4)%320; now we've got 16.... but they're incrementing by 80...
-				// 	x = (x*80 + x/(320/80))%320;
-				/+
-						write 155 0 at 5 5 addr[1620]
-					  write 155 0 at 25 5 addr[1700]
-					  write 152 0 at 45 5 addr[1780]
-					  write 152 0 at 65 5 addr[1860]
-					  write 152 0 at 5 6 addr[1940]
-					  write 152 0 at 25 6 addr[2020]
-					  write 153 0 at 45 6 addr[2100]
-					  write 153 0 at 65 6 addr[2180]
-					  write 153 0 at 5 7 addr[2260]
-					  write 153 0 at 25 7 addr[2340]
-					  write 155 0 at 45 7 addr[2420]
-					  write 155 0 at 65 7 addr[2500]
-					+/
+				// 	x = (x*80 + x/(320/80))%320;				
 				}
 			al_draw_pixel(x  , y, al_map_rgb(CLT[c1].r, CLT[c1].g, CLT[c1].b));
 			if(o.bytes >= 2)
@@ -840,7 +783,7 @@ void drawData()
 				al_draw_pixel(x+3, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
 				}
 			
-			writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
+			// writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
 			opsRun++;
 			if(opsRun >= OpsPerDraw && !flipPerFrame) // END OF OPS BATCH, TRIGGER A DRAW
 				{
@@ -978,14 +921,11 @@ void executeOnce()
 		}else{
 		writeln(" - flipPerFrame = OFF");	
 		}						
-
 	
-	int w=640;
-	int h=400;
-	canvas = al_create_bitmap(w, h);
-	canvasCombined = al_create_bitmap(w, h);
-	canvasCombinedReordered = al_create_bitmap(w, h);
-	paletteAtlas = al_create_bitmap(16, 16);
+	canvas = al_create_bitmap(canvasW, canvasH);
+	canvasCombined = al_create_bitmap(canvasW, canvasH);
+	canvasCombinedReordered = al_create_bitmap(canvasW, canvasH);
+	paletteAtlas = al_create_bitmap(16, 16); // 16 * 16 = 256
 
 	parseData();
 	assert(canvas != null);
