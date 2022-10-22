@@ -290,7 +290,15 @@ public:
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)(write_pixels+4)=colors4_7;
-		
+		const int NUM_BYTES = 4;
+		printf("%d,hello40A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			start, NUM_BYTES,getByte(colors0_3, 0),getByte(colors0_3, 1),getByte(colors0_3, 2),getByte(colors0_3, 3));
+		//const int NUM_BYTES = 4;
+		printf("%d,hello40B,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			start+4, NUM_BYTES,getByte(colors4_7, 0),getByte(colors4_7, 1),getByte(colors4_7, 2),getByte(colors4_7, 3));
+				
 	}
 public:	
 	VGA_UnchainedEGA_Handler()  {	// commander keen 1, EGA
@@ -537,7 +545,11 @@ public:
 		pixels.d|=(data & vga.config.full_map_mask);
 		((uint32_t*)vga.mem.linear)[addr]=pixels.d;
 //		if(vga.config.compatible_chain4)
-//			((uint32_t*)vga.mem.linear)[CHECKED2(addr+64*1024)]=pixels.d; 
+//			((uint32_t*)vga.mem.linear)[CHECKED2(addr+64*1024)]=pixels.d;
+//		const int NUM_BYTES = 1;
+	//	printf("%d,hello55A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+		//	KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			//addr, NUM_BYTES,val,-1,-1,-1);
 	}
 public:
 	VGA_UnchainedVGA_Handler()  {
@@ -636,10 +648,7 @@ public:
 				{vga.draw.font[addr] = val; mode = 3; //(i)ndex, none so far
 				vga.mem.linear[CHECKED3(vga.svga.bank_read_full + addr)] = val;
 				}
-		}
-		//if(val < 32 || val >= 127)val = '?';
-		//printf("#[%d] hello16b+%c  0x%X = %d [%c]\n", KAT_CURRENT_FRAME, mode, addr, val, val);
-
+		}		
 		const int NUM_BYTES = 1;
 		printf("%d,hello16b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 

@@ -1,9 +1,11 @@
+int RES_WIDTH = 320;
+int RES_HEIGHT = 200;
 
 uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but not draw anything. So we can setup palette, and also skip to specific sections
 uint CONFIG_frameToEnd = 0; //if higher than -1, we'll restart at X. [NYI]
 int canvasW = 1366;	// canvas size
 int canvasH = 768;	// ''
-float SCALE=3.0;
+float SCALE=1.5;
 frame[] frames;
 bool firstRun=true;
 int currentExpectedFrame = -1024;
@@ -344,6 +346,15 @@ void execute()
 					if(isKey(KEY_8))currentFrameBeingDrawn = cast(ulong)(frames.length * .80);
 					if(isKey(KEY_9))currentFrameBeingDrawn = cast(ulong)(frames.length * .90);
 					if(isKey(KEY_0))currentFrameBeingDrawn = 0;
+					if(isKey(KEY_R))RES_WIDTH = 80;
+					if(isKey(KEY_T))RES_WIDTH = 160;					
+					if(isKey(KEY_G))RES_WIDTH = 320;					
+					if(isKey(KEY_Y))RES_WIDTH = 640;					
+					if(isKey(KEY_U))RES_WIDTH = 1280;					
+					if(isKey(KEY_I))RES_WIDTH = 640;					
+					if(isKey(KEY_O))RES_WIDTH = 640;					
+					if(isKey(KEY_P))RES_WIDTH = 640;					
+					
 					keyPressed[event.keyboard.keycode] = true;
 					break;
 					}
@@ -469,46 +480,6 @@ void drawPalette(float x, float y, float scale)
 		x, y, paletteAtlas.w*scale, paletteAtlas.h*scale, 0);	
 	}
 
-//=============================================================================
-string inputPath;
-int main(string [] args)
-	{
-	setupFloatingPoint();
-	writeln("args length = ", args.length);
-	foreach(size_t i, string arg; args)
-		{
-		writeln("[",i, "] ", arg);
-		}
-		
-	if(args.length >= 2)
-		{
-		writeln("args:", args);
-		inputPath = args[1];
-		//g.SCREEN_W = to!int(args[1]);
-		//g.SCREEN_H = to!int(args[2]);
-		//writeln("New resolution is ", g.SCREEN_W, "x", g.SCREEN_H);
-		
-		if(args.length >= 3)
-			{
-			CONFIG_frameToStartDrawing = to!uint(args[2]);
-			writeln("Starting rendering at frame [", CONFIG_frameToStartDrawing, "]");
-			}
-		
-		}else{
-		writeln("args:", args, " using default path");
-		inputPath = "/home/novous/Desktop/git/dosbox-staging/build/output2.txt";
-		}
-
-	return al_run_allegro(
-		{
-		initialize();
-		execute();
-		shutdown();
-		return 0;
-		});
-
-	return 0;
-	}
 	
 /*
 	how do we handle anything "special" that might happen during a draw, that isn't a pixel and 
@@ -619,32 +590,58 @@ void parseData()
 				}
 			
 			
+			bool isPrintable(T)(T val)
+				{
+				if(cast(char)val >= 32 && cast(char)val < 127)
+					{
+					return true;
+					}else{
+					return false;
+					}
+					
+				}
+			
 			switch(record[1])
 				{
 				case "VGA_VerticalTimer":
 				case "VGA_DisplayStartLatch":
 				case "VGA_PanningLatch":
+				case "hello30b":	// EGA likely --> HANDLED BY 40A/B
+				case "hello31w":	// EGA ''
+				case "hello55A":	// VGA writeHandler
 					continue;
+				
+				case "hello14w":
+				case "hello16b":	// NOTE: 16b we're tossing a (text) mode byte on the end. (mode#=set color, set glyph, set etc) not being used yet.
 								
+//					ubyte bytes = cast(ubyte)record[8];
+	//				if(bytes == 1 && isPrintable(record[9]))writef("%c ", cast(char)record[9]);
+		//			if(bytes == 2 && isPrintable(record[9]) && isPrintable(record[10]))writef("%c, %c ", cast(char)record[9], cast(char)record[10]);
+			//		goto case; //dump text, but also draw just in case for now.
+				
+								
+				case "hello40A":	// half packet 4 bytes	[EGA, 1 byte affects 2 pixels? 2 bytes = 4 pixels? But we're affecting 4x the bit planes?]
+				case "hello40B":	// other half of packet 4 bytes [EGA writeHandler]
+				
+				
+				
 				case "hello10b":
 				case "hello11w":
 				case "hello12d":
 				case "hello13b":
-				case "hello14w":
-				case "hello16b":	// NOTE: 16b we're tossing a (text) mode byte on the end. (mode#=set color, set glyph, set etc) not being used yet.
-				case "hello30b":	// EGA likely
-				case "hello31w":	// EGA ''
-				case "hello32d":	// EGA ''
+				case "hello15d":
+				// 	case "hello32d":	// EGA ''
 					op o;
 					o.address = record[7]; 
 					o.bytes = record[8];
-					currentFrame.width = record[3]; // NOTE frame settings
+					currentFrame.width = record[3]; // NOTE frame settings.
 					currentFrame.height = record[4];
 					if(o.bytes == 1) {o.data[0] = record[9];}
 					if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
-					if(o.bytes == 4) {o.data[0] = record[10]; o.data[1] = record[11]; o.data[2] = record[12]; o.data[3] = record[13];}
+					if(o.bytes == 4) {o.data[0] = record[9]; o.data[1] = record[10]; o.data[2] = record[11]; o.data[3] = record[12];}
 					currentFrame.ops ~= o;
-					totalOps++;
+					totalOps++;					
+					writeln("o.address: ", o.address, " for: ", o.data);
 				break;
 				case "palette":
 					pop p;
@@ -735,17 +732,35 @@ void drawData()
 			if(f.frameNumber < CONFIG_frameToStartDrawing)continue;
 			ubyte c1 = cast(ubyte)o.data[0];
 			ubyte c2, c3, c4;
-			int x = o.address % 320;
-			int y = o.address / 320;
+			int x = o.address % RES_WIDTH;
+			int y = o.address / RES_WIDTH;
+			
+			int x2 = 0, y2 = 0;
+			
+			if(o.bytes == 2)
+				{
+				x2 = (o.address+1) % RES_WIDTH;
+				y2 = (o.address+1) / RES_WIDTH;
+				}
+			if(o.bytes == 1)
+				{
+				writefln("[%d,%d] = %d [A:%d]", x, y, c1, o.address);
+				}
+			if(o.bytes == 2)
+				{
+				c2 = cast(ubyte)o.data[1];
+				writefln("[%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", x, y, c1, o.address, x2, y2, c2, o.address + 1);
+				}
+			
 			assert(o.address >= 0);
 			assert(x >= 0);
 			assert(y >= 0);
+			assert(x2 >= 0);
+			assert(y2 >= 0);
 			if(doReorder)
 				{
-				int nx = x;
-				
-				nx = (nx*4)%320 - (3 - 1*nx%320);
-				
+				int nx = (x%80) + 80*x/RES_WIDTH;
+				//nx = (nx*4)%RES_WIDTH - (3 - 1*nx%RES_WIDTH);				
 				x = nx;
 					
 					/*
@@ -777,18 +792,20 @@ void drawData()
 				// x = (x*80 + x/4)%320; now we've got 16.... but they're incrementing by 80...
 				// 	x = (x*80 + x/(320/80))%320;				
 				}
-			al_draw_pixel(x  , y, al_map_rgb(CLT[c1].r, CLT[c1].g, CLT[c1].b));
+			al_draw_pixel(x + 0.5, y + 0.5, al_map_rgb(CLT[c1].r, CLT[c1].g, CLT[c1].b));
 			if(o.bytes >= 2)
 				{
 				c2 = cast(ubyte)o.data[1];
-				al_draw_pixel(x+1, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));	
+				// WARN, don't forget to uncomment this -->
+			//	al_draw_pixel(x2 + 0.5, y2 + 0.5, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));	
 				}
-			if(o.bytes == 4) //4 bytes (there's no 3 byte messages)
+			if(o.bytes == 4) //4 bytes
 				{
 				c3 = cast(ubyte)o.data[2];
 				c4 = cast(ubyte)o.data[3];
-				al_draw_pixel(x+2, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
-				al_draw_pixel(x+3, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
+					// WARN, don't forget to uncomment this -->
+			//	al_draw_pixel(x+2, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
+			//	al_draw_pixel(x+3, y, al_map_rgb(CLT[c2].r, CLT[c2].g, CLT[c2].b));					
 				}
 			
 			// writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
@@ -911,3 +928,40 @@ void executeOnce()
 	writefln("[Parsing] Time elapsed %3.2f seconds [%3.2fs / frame] [%3.2f ops/sec]", secs, secs/frames.length, totalOps/secs);
 	}
 
+//=============================================================================
+string inputPath;
+int main(string [] args)
+	{
+	setupFloatingPoint();
+	writeln("args length = ", args.length);
+	foreach(size_t i, string arg; args)
+		{
+		writeln("[",i, "] ", arg);
+		}
+		
+	if(args.length >= 2)
+		{
+		writeln("args:", args);
+		inputPath = args[1];
+		
+		if(args.length >= 3)
+			{
+			CONFIG_frameToStartDrawing = to!uint(args[2]);
+			writeln("Starting rendering at frame [", CONFIG_frameToStartDrawing, "]");
+			}
+		
+		}else{
+		writeln("args:", args, " using default path");
+		inputPath = "/home/novous/Desktop/git/dosbox-staging/build/output2.txt";
+		}
+
+	return al_run_allegro(
+		{
+		initialize();
+		execute();
+		shutdown();
+		return 0;
+		});
+
+	return 0;
+	}
