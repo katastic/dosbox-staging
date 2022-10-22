@@ -68,3 +68,6 @@ Resources
 .clangd
 .cache
 compile_commands.json
+
+# KAT
+dviewer/frames

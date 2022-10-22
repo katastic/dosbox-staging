@@ -621,12 +621,20 @@ void parseData()
 			
 			switch(record[1])
 				{
+				case "VGA_VerticalTimer":
+				case "VGA_DisplayStartLatch":
+				case "VGA_PanningLatch":
+					continue;
+								
 				case "hello10b":
 				case "hello11w":
 				case "hello12d":
 				case "hello13b":
 				case "hello14w":
 				case "hello16b":	// NOTE: 16b we're tossing a (text) mode byte on the end. (mode#=set color, set glyph, set etc) not being used yet.
+				case "hello30b":	// EGA likely
+				case "hello31w":	// EGA ''
+				case "hello32d":	// EGA ''
 					op o;
 					o.address = record[7]; 
 					o.bytes = record[8];
@@ -787,40 +795,6 @@ void drawData()
 			opsRun++;
 			if(opsRun >= OpsPerDraw && !flipPerFrame) // END OF OPS BATCH, TRIGGER A DRAW
 				{
-//				al_unlock_bitmap(canvas);
-//				writeln("vsync");
-				/*
-				if (doReorder)
-					{
-					if(firstFrame)
-						{
-						firstFrame = false; // do nothing. skip it. we haven't blitted to canvasCombined yet and that's our snoop target.
-						
-						}else{
-						al_set_target_bitmap(canvasCombinedReordered);
-						al_lock_bitmap(canvasCombined, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_READONLY);
-						al_lock_bitmap(canvasCombinedReordered, allegro5.color.ALLEGRO_PIXEL_FORMAT.ALLEGRO_PIXEL_FORMAT_ANY, ALLEGRO_LOCK_WRITEONLY);
-					
-						with(ALLEGRO_BLEND_MODE)
-							{
-							al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ZERO, ALLEGRO_ONE); // write alpha
-							for(int j = 0; j < 200; j++)
-								for(int i = 0; i < 320; i++)
-									{
-									color c = al_get_pixel(canvasCombined, i, j);
-									int X = i;// %4 + i%80 - i/80;
-									int Y = j;
-									al_put_pixel(X, Y, c);  //320/4 wide = 80
-									writeln(i, " = ", X,",",Y, " set to:", c);
-									}													
-							al_set_blender(ALLEGRO_BLEND_OPERATIONS.ALLEGRO_ADD, ALLEGRO_ONE, ALLEGRO_INVERSE_ALPHA);
-							}
-						
-						al_unlock_bitmap(canvasCombinedReordered);
-						al_unlock_bitmap(canvasCombined);
-						}
-					}					
-				*/
 				// now draw BOTH layers to [screen] separately, with tinting for newest additions
 				// ------------------------------------------------------------------------------------------------
 				al_set_target_backbuffer(al_display);

@@ -293,7 +293,7 @@ public:
 		
 	}
 public:	
-	VGA_UnchainedEGA_Handler()  {
+	VGA_UnchainedEGA_Handler()  {	// commander keen 1, EGA
 		flags=PFLAG_NOCODE;
 	}
 
@@ -304,12 +304,10 @@ public:
 		addr = CHECKED2(addr);
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
-//	printf("hello30\n");
-		const int width = 320;
-// 		const int height = 200;
-		int x = addr % width;
-		int y = addr / width; //must be integer div
-		printf("#[%d] hello30b 0x%X xy[%d,%d] %d\n", KAT_CURRENT_FRAME, addr, x, y, val);
+		const int NUM_BYTES = 1;
+		printf("%d,hello30b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES,(uint8_t)(val >> 0), -1,-1,-1);
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -320,11 +318,10 @@ public:
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
-		const int width = 320;
-// 		const int height = 200;
-		int x = addr % width;
-		int y = addr / width; //must be integer div
-		printf("#[%d] hello31w 0x%X xy[%d,%d] %d %d\n", KAT_CURRENT_FRAME, addr, x, y, getByte(val, 0), getByte(val, 1));
+		const int NUM_BYTES = 2;
+		printf("%d,hello31w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, (uint8_t)(val >> 0), (uint8_t)(val >> 8),-1,-1);
 	}
 
 	void writed(PhysPt addr, uint32_t val)
@@ -337,12 +334,10 @@ public:
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
-
-		const int width = 320;
-// 		const int height = 200;
-		int x = addr % width;
-		int y = addr / width; //must be integer div
-		printf("#[%d] hello32d 0x%X xy[%d,%d] %d %d %d %d\n", KAT_CURRENT_FRAME, addr, x, y, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3));
+		const int NUM_BYTES = 1;
+		printf("%d,hello32d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, (uint8_t)(val >> 0), (uint8_t)(val >> 8), (uint8_t)(val >> 16), (uint8_t)(val >> 24));
 	}
 };
 
@@ -460,13 +455,23 @@ public:
 
 	void writeb(PhysPt addr, uint8_t val)
 	{
+		printf("a%d\n", addr);
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
+		printf("b%d\n", addr);
 		addr += vga.svga.bank_write_full;
+		printf("c%d\n", addr);
 		addr = CHECKED(addr);
+		printf("d%d\n", addr);
 		MEM_CHANGED( addr );
+		printf("e%d\n", addr);
 		writeHandler_byte(addr, val);
+		printf("f%d\n", addr);
 		writeCache_byte(addr, val);
-		printf("hello10b\n");
+		printf("g%d\n", addr);
+		const int NUM_BYTES = 1;
+		printf("%d,hello10b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1),-1,-1);
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -479,12 +484,7 @@ public:
 		addr = CHECKED(addr);
 //		printf("addr3 = %d\n", addr);
 		MEM_CHANGED( addr );
-		
-		const int NUM_BYTES = 2;
-		printf("%d,hello11w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
-			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1),-1,-1);
-		
+				
 //		MEM_CHANGED( addr + 1);
 		if (GCC_UNLIKELY(addr & 1)) {
 			writeHandler_byte(addr + 0, val >> 0);
@@ -494,20 +494,13 @@ public:
 		}
 		writeCache_word(addr, val);
 
-
+		const int NUM_BYTES = 2;
+		printf("%d,hello11w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1),-1,-1);
+		
 		// VGA 320x200x8, Nite Raid.
-//		const int width = 320;
-// 		const int height = 200;
-//		int x = addr % width;
-//		int y = addr / width; //must be integer div
-
-		// KAT
-/* int MODE_NUMBER = 0;
- int MODE_W = 0;
- int MODE_H = 0;
- const char *MODE_NAME;
- const char *MODE_COLORS = 0;
-*/	}
+	}
 
 	void writed(PhysPt addr, uint32_t val)
 	{
@@ -553,17 +546,23 @@ public:
 
 	void writeb(PhysPt addr, uint8_t val)
 	{
+		printf("a %d\n", addr);
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
+		printf("b %d\n", addr);
 		addr += vga.svga.bank_write_full;
+		printf("c %d\n", addr);
 		addr = CHECKED2(addr);
+		printf("d %d\n", addr);
 		MEM_CHANGED( addr << 2 );
+		printf("e %d\n", addr);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
-		//printf("hello13\n");
-		
+		printf("f %d\n", addr);
 		const int NUM_BYTES = 1;
 		printf("%d,hello13b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			addr, NUM_BYTES, getByte(val, 0), -1, -1, -1);
+		//printf("    %d %d %d %d %d\n", vga.config.chained, vga.config.compatible_chain4, vga.config.addr_shift, vga.config.write_mode, vga.config.write_mode);
+		// 0 1 0 0 0
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -590,7 +589,6 @@ public:
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
-		//printf("hello15\n");
 		const int NUM_BYTES = 4;
 		printf("%d,hello15d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
