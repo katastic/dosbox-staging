@@ -911,13 +911,13 @@ static void VGA_VertInterrupt(uint32_t /*val*/)
 	    ((vga.crtc.vertical_retrace_end & 0x30) == 0x10)) {
 		vga.draw.vret_triggered=true;
 		if (GCC_UNLIKELY(machine==MCH_EGA)) PIC_ActivateIRQ(9);
-	printf("VGA_VertInterrupt VSYNC ----------------- \n"); //NOT triggered so far
+//	printf("VGA_VertInterrupt VSYNC ----------------- \n"); //NOT triggered so far
 	}
 }
 
 static void VGA_Other_VertInterrupt(uint32_t val)
 {
-	printf("VGA_Other_VertInterrupt ----------------- \n"); //NOT tested
+//	printf("VGA_Other_VertInterrupt ----------------- \n"); //NOT tested
 	if (val)
 		PIC_ActivateIRQ(5);
 	else PIC_DeActivateIRQ(5);
@@ -925,21 +925,21 @@ static void VGA_Other_VertInterrupt(uint32_t val)
 
 static void VGA_DisplayStartLatch(uint32_t /*val*/)
 {
-	printf("%d,VGA_DisplayStartLatch,0,0,0,0,0,0,0,0,0,-1,-1\n", KAT_CURRENT_FRAME); 
+//	printf("%d,VGA_DisplayStartLatch,0,0,0,0,0,0,0,0,0,-1,-1\n", KAT_CURRENT_FRAME); 
 	vga.config.real_start = vga.config.display_start & (vga.vmemwrap - 1);
 	vga.draw.bytes_skip = vga.config.bytes_skip;
 }
 
 static void VGA_PanningLatch(uint32_t /*val*/)
 {
-	printf("%d,VGA_PanningLatch,0,0,0,0,0,0,0,0,0,-1,-1\n", KAT_CURRENT_FRAME); 
+//	printf("%d,VGA_PanningLatch,0,0,0,0,0,0,0,0,0,-1,-1\n", KAT_CURRENT_FRAME); 
 	vga.draw.panning = vga.config.pel_panning;
 }
 
 static void VGA_VerticalTimer(uint32_t /*val*/)
 {
 	KAT_CURRENT_FRAME++;
-	printf("%d,VGA_VerticalTimer,0,0,0,0,0,0,0,0,0,-1,-1\n", KAT_CURRENT_FRAME); 
+//	printf("%d,VGA_VerticalTimer,0,0,0,0,0,0,0,0,0,-1,-1\n", KAT_CURRENT_FRAME);  we're using implict frame changes anyway
 	vga.draw.delay.framestart = PIC_FullIndex();
 	PIC_AddEvent(VGA_VerticalTimer, vga.draw.delay.vtotal);
 

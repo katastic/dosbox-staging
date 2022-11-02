@@ -294,7 +294,6 @@ public:
 		printf("%d,hello40A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start, NUM_BYTES,getByte(colors0_3, 0),getByte(colors0_3, 1),getByte(colors0_3, 2),getByte(colors0_3, 3));
-		//const int NUM_BYTES = 4;
 		printf("%d,hello40B,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start+4, NUM_BYTES,getByte(colors4_7, 0),getByte(colors4_7, 1),getByte(colors4_7, 2),getByte(colors4_7, 3));
@@ -535,9 +534,11 @@ public:
 	}
 };
 
+// THIS SHOULD BE modex right? and various other unchained VGA
 class VGA_UnchainedVGA_Handler final : public VGA_UnchainedRead_Handler {
 public:
 	void writeHandler( PhysPt addr, uint8_t val ) {
+		uint8_t oldval = val;
 		uint32_t data=ModeOperation(val);
 		VGA_Latch pixels;
 		pixels.d=((uint32_t*)vga.mem.linear)[addr];
@@ -546,17 +547,22 @@ public:
 		((uint32_t*)vga.mem.linear)[addr]=pixels.d;
 //		if(vga.config.compatible_chain4)
 //			((uint32_t*)vga.mem.linear)[CHECKED2(addr+64*1024)]=pixels.d;
-//		const int NUM_BYTES = 1;
-	//	printf("%d,hello55A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
-		//	KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			//addr, NUM_BYTES,val,-1,-1,-1);
+
+		// I think MASK ENDIANNESS/ORDER IS FLIPPED
+		// 		[below] val:252 data[]=252,252,252,252 pixels.d=252,0,0,0 notmask:FFFFFF00 mask000000FF
+
+		printf("[below] val:%d data[]=%d,%d,%d,%d pixels.d=%d,%d,%d,%d notmask:%08X mask%08X\n", oldval, getByte(data, 0), getByte(data, 1), getByte(data, 2), getByte(data, 3), getByte(pixels.d, 0), getByte(pixels.d, 1), getByte(pixels.d, 2), getByte(pixels.d, 3), vga.config.full_not_map_mask, vga.config.full_map_mask);
+		const int NUM_BYTES = 1;
+		printf("%d,hello55A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES,val,-1,-1,-1);
 	}
 public:
 	VGA_UnchainedVGA_Handler()  {
 		flags=PFLAG_NOCODE;
 	}
 
-	void writeb(PhysPt addr, uint8_t val)
+	void writeb(PhysPt addr, uint8_t val) // -->MODE X/Y <---, dosbox, exmem.c putpixel AS WELL AS TEXT MODE.
 	{
 		printf("a %d\n", addr);
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
@@ -570,14 +576,19 @@ public:
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		printf("f %d\n", addr);
 		const int NUM_BYTES = 1;
+		int tempAddr = addr;
+		if(vga.config.full_map_mask == 0x000000FF)tempAddr += 0;
+		if(vga.config.full_map_mask == 0x0000FF00)tempAddr += 1;
+		if(vga.config.full_map_mask == 0x00FF0000)tempAddr += 2;
+		if(vga.config.full_map_mask == 0xFF000000)tempAddr += 3;
 		printf("%d,hello13b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES, getByte(val, 0), -1, -1, -1);
+			tempAddr, NUM_BYTES, getByte(val, 0), -1, -1, -1);
 		//printf("    %d %d %d %d %d\n", vga.config.chained, vga.config.compatible_chain4, vga.config.addr_shift, vga.config.write_mode, vga.config.write_mode);
 		// 0 1 0 0 0
 	}
 
-	void writew(PhysPt addr, uint16_t val)
+	void writew(PhysPt addr, uint16_t val)	// used in Wolf3D MODE X/Y
 	{
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_write_full;
@@ -652,8 +663,10 @@ public:
 		const int NUM_BYTES = 1;
 		printf("%d,hello16b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES, val, -1,-1,mode);
-			// WANNING, we're tossing mode on the end!
+			addr, NUM_BYTES, val, -1, -1,mode);
+			// WANNING, we're tossing vgapages.mask, and mode on the end!
+		// printf("vgapages.mask=%lu\n", vgapages.mask);
+		// in the case of Keen1, ALL MASKS = 65535 (0xffff)
 
 	}
 };
