@@ -5,7 +5,7 @@ uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but n
 uint CONFIG_frameToEnd = 0; //if higher than -1, we'll restart at X. [NYI]
 int canvasW = 1366;	// canvas size
 int canvasH = 768;	// ''
-float SCALE=1.5;
+float SCALE=2;
 frame[] frames;
 bool firstRun=true;
 int currentExpectedFrame = -1024;

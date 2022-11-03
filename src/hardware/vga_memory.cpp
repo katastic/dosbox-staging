@@ -285,13 +285,13 @@ public:
 		*(uint32_t *)write_pixels=colors0_3;
 			
 		const int NUM_BYTES = 4;
-		printf("%d,hello40A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
-			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, "hello40A", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start, NUM_BYTES, 
-			colors0_3 % 0b00000011,
-			colors0_3 % 0b00001100 >> 2,
-			colors0_3 % 0b00110000 >> 4,
-			colors0_3 % 0b11000000 >> 6
+			colors0_3 & 0b0000000000001111,
+			colors0_3 & 0b0000000011110000 >> 4,
+			colors0_3 & 0b0000111100000000 >> 8,
+			colors0_3 & 0b1111000000000000 >> 12
 			);
 		
 		temp.d=pixels.d & 0x0f0f0f0f;
@@ -302,13 +302,13 @@ public:
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)(write_pixels+4)=colors4_7;
 		
-		printf("%d,hello40B,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
-			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, "hello40B", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start+4, NUM_BYTES,
-			colors4_7 % 0b00000011,
-			colors4_7 % 0b00001100 >> 2,
-			colors4_7 % 0b00110000 >> 4,
-			colors4_7 % 0b11000000 >> 6
+			colors4_7 & 0b0000000000001111,
+			colors4_7 & 0b0000000011110000 >> 4,
+			colors4_7 & 0b0000111100000000 >> 8,
+			colors4_7 & 0b1111000000000000 >> 12
 			);
 
 	}
