@@ -283,6 +283,17 @@ public:
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)write_pixels=colors0_3;
+			
+		const int NUM_BYTES = 4;
+		printf("%d,hello40A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			start, NUM_BYTES, 
+			colors0_3 % 0b00000011,
+			colors0_3 % 0b00001100 >> 2,
+			colors0_3 % 0b00110000 >> 4,
+			colors0_3 % 0b11000000 >> 6
+			);
+		
 		temp.d=pixels.d & 0x0f0f0f0f;
 		colors4_7 = 
 			Expand16Table[0][temp.b[0]] |
@@ -290,14 +301,16 @@ public:
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)(write_pixels+4)=colors4_7;
-		const int NUM_BYTES = 4;
-		printf("%d,hello40A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
-			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			start, NUM_BYTES,getByte(colors0_3, 0),getByte(colors0_3, 1),getByte(colors0_3, 2),getByte(colors0_3, 3));
+		
 		printf("%d,hello40B,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			start+4, NUM_BYTES,getByte(colors4_7, 0),getByte(colors4_7, 1),getByte(colors4_7, 2),getByte(colors4_7, 3));
-				
+			start+4, NUM_BYTES,
+			colors4_7 % 0b00000011,
+			colors4_7 % 0b00001100 >> 2,
+			colors4_7 % 0b00110000 >> 4,
+			colors4_7 % 0b11000000 >> 6
+			);
+
 	}
 public:	
 	VGA_UnchainedEGA_Handler()  {	// commander keen 1, EGA

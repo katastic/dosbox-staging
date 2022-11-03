@@ -16,7 +16,7 @@ int totalPops=0;
 int opsRun = 0;
 int OpsPerDraw = 256;
 bool flipPerFrame = false;
-bool doReorder=true;
+bool doReorder=false;
 bool isPaused=false;
 bool doSaveFrames=false;
 float parsingTime=-1;
@@ -762,8 +762,8 @@ void drawData()
 		pixel getAddress(int address, int resWidth, int resHeight)
 			{
 			pixel p;
-			p.x = address % (RES_WIDTH/4);
-			p.y = address / (RES_WIDTH/4);
+			p.x = address % RES_WIDTH;
+			p.y = address / RES_WIDTH;
 			
 			return p;
 			}	
@@ -780,8 +780,10 @@ void drawData()
 				{
 				p1 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);					
 				p1.c = cast(ubyte)o.data[0];
-				writefln("[%d,%d] = %d [A:%d]", p1.x, p1.y, p1.c, o.address);
+				writefln("[%d,%d] = %d [A:%d]", 
+					p1.x, p1.y, p1.c, o.address);
 				}
+				
 			if(o.bytes == 2)
 				{
 //				if(maxWidth < x+1)maxWidth = x+1;				
@@ -789,7 +791,9 @@ void drawData()
 				p1.c = cast(ubyte)o.data[0];
 				p2 = getAddress(o.address+1, RES_WIDTH, RES_HEIGHT);	
 				p2.c = cast(ubyte)o.data[1];
-				writefln("[%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", p1.x, p1.y, p1.c, o.address, p2.x, p2.y, p2.c, o.address + 1);
+				writefln("[%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
+					p1.x, p1.y, p1.c, o.address, 
+					p2.x, p2.y, p2.c, o.address + 1);
 				}
 
 			if(o.bytes == 4)
