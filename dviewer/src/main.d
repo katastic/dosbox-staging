@@ -1,11 +1,11 @@
 int RES_WIDTH = 48;
 int RES_HEIGHT = 200;
-
-uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but not draw anything. So we can setup palette, and also skip to specific sections
-uint CONFIG_frameToEnd = 0; //if higher than -1, we'll restart at X. [NYI]
+float SCALE=2;
 int canvasW = 1366;	// canvas size
 int canvasH = 2000;	// ''
-float SCALE=1;
+uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but not draw anything. So we can setup palette, and also skip to specific sections
+uint CONFIG_frameToEnd = 0; //if higher than -1, we'll restart at X. [NYI]
+
 frame[] frames;
 bool firstRun=true;
 int currentExpectedFrame = -1024;
@@ -787,8 +787,10 @@ void drawData()
 		pixel getAddress(int address, int resWidth, int resHeight)
 			{
 			pixel p;
-			p.x = address % RES_WIDTH;
-			p.y = address / RES_WIDTH;			
+			p.x = (address % RES_WIDTH) * 4;
+			p.y = address / RES_WIDTH;
+			//p.x = address % RES_WIDTH;
+			//p.y = address / RES_WIDTH;
 			return p;
 			}	
 
@@ -797,7 +799,7 @@ void drawData()
 			if(f.frameNumber < CONFIG_frameToStartDrawing)continue;						
 			pixel p1, p2, p3, p4;
 			
-			if(maxWidth < p1.x)maxWidth = p1.x;	// NOTE, not testing p2, p3, p4, doesn't matter right now
+			if(maxWidth  < p1.x)maxWidth  = p1.x;	// NOTE, not testing p2, p3, p4, doesn't matter right now
 			if(maxHeight < p1.y)maxHeight = p1.y;			
 			
 			if(o.bytes == 1)
@@ -823,7 +825,7 @@ void drawData()
 			if(o.bytes == 4)
 				{
 				//if(maxWidth < x+3)maxWidth = x+3;	
-				p1 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+				p1 = getAddress(o.address  , RES_WIDTH, RES_HEIGHT);	
 				p1.c = cast(ubyte)o.data[0];
 				p2 = getAddress(o.address+1, RES_WIDTH, RES_HEIGHT);	
 				p2.c = cast(ubyte)o.data[1];
@@ -882,20 +884,27 @@ void drawData()
 				// x = (x*80 + x/4)%320; now we've got 16.... but they're incrementing by 80...
 				// 	x = (x*80 + x/(320/80))%320;				
 				}
-			al_draw_pixel(p1.x + 0.5, p1.y + 0.5, al_map_rgb(CLT[p1.c].r, CLT[p1.c].g, CLT[p1.c].b));
-			if(o.bytes >= 2)
+				
+			if(o.bytes == 1) 
+				{
+				al_draw_pixel(p1.x + 0.5, p1.y + 0.5, al_map_rgb(CLT[p1.c].r, CLT[p1.c].g, CLT[p1.c].b));
+				}
+			if(o.bytes == 2)
 				{
 				//c2 = cast(ubyte)o.data[1];
 				// WARN, don't forget to uncomment this -->
-				al_draw_pixel(p2.x + 0.5, p2.y + 0.5, al_map_rgb(CLT[p2.c].r, CLT[p2.c].g, CLT[p2.c].b));	
+				al_draw_pixel(p2.x + 0.5    , p2.y + 0.5, al_map_rgb(CLT[p1.c].r, CLT[p1.c].g, CLT[p1.c].b));
+				al_draw_pixel(p1.x + 0.5 + 1, p1.y + 0.5, al_map_rgb(CLT[p2.c].r, CLT[p2.c].g, CLT[p2.c].b));	
 				}
 			if(o.bytes == 4) //4 bytes
 				{
 				//c3 = cast(ubyte)o.data[2];
 				//c4 = cast(ubyte)o.data[3];
 					// WARN, don't forget to uncomment this -->
-				al_draw_pixel(p3.x + 0.5, p3.y + 0.5, al_map_rgb(CLT[p3.c].r, CLT[p3.c].g, CLT[p3.c].b));					
-				al_draw_pixel(p4.x + 0.5, p4.y + 0.5, al_map_rgb(CLT[p4.c].r, CLT[p4.c].g, CLT[p4.c].b));					
+				al_draw_pixel(p4.x + 0.5    , p4.y + 0.5, al_map_rgb(CLT[p4.c].r, CLT[p4.c].g, CLT[p4.c].b));
+				al_draw_pixel(p3.x + 0.5 + 1, p3.y + 0.5, al_map_rgb(CLT[p3.c].r, CLT[p3.c].g, CLT[p3.c].b));	
+				al_draw_pixel(p2.x + 0.5 + 2, p2.y + 0.5, al_map_rgb(CLT[p2.c].r, CLT[p2.c].g, CLT[p2.c].b));					
+				al_draw_pixel(p1.x + 0.5 + 3, p1.y + 0.5, al_map_rgb(CLT[p1.c].r, CLT[p1.c].g, CLT[p1.c].b));					
 				}
 			
 			// writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
