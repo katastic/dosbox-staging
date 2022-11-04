@@ -1,11 +1,11 @@
-int RES_WIDTH = 320;
+int RES_WIDTH = 48;
 int RES_HEIGHT = 200;
 
 uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but not draw anything. So we can setup palette, and also skip to specific sections
 uint CONFIG_frameToEnd = 0; //if higher than -1, we'll restart at X. [NYI]
 int canvasW = 1366;	// canvas size
-int canvasH = 768;	// ''
-float SCALE=2;
+int canvasH = 2000;	// ''
+float SCALE=1;
 frame[] frames;
 bool firstRun=true;
 int currentExpectedFrame = -1024;
@@ -20,6 +20,7 @@ bool doReorder=false;
 bool isPaused=false;
 bool doSaveFrames=false;
 float parsingTime=-1;
+ulong currentFrameBeingDrawn = 0;
 StopWatch sw3;
 
 struct pixel
@@ -363,8 +364,8 @@ void execute()
 					if(isKey(KEY_Y))RES_WIDTH = 640;					
 					if(isKey(KEY_U))RES_WIDTH = 1280;					
 					if(isKey(KEY_I))RES_WIDTH = 640;					
-					if(isKey(KEY_O))RES_WIDTH = 640;					
-					if(isKey(KEY_P))RES_WIDTH = 640;					
+					if(isKey(KEY_O))RES_WIDTH--;					
+					if(isKey(KEY_P))RES_WIDTH++;					
 					
 					keyPressed[event.keyboard.keycode] = true;
 					break;
@@ -491,7 +492,6 @@ void drawPalette(float x, float y, float scale)
 		x, y, paletteAtlas.w*scale, paletteAtlas.h*scale, 0);	
 	}
 
-	
 /*
 	how do we handle anything "special" that might happen during a draw, that isn't a pixel and 
 	isn't a VSYNC frame boundary?
@@ -579,7 +579,7 @@ void parseData()
 	drawPalette(1200, 0, 8);
 	al_flip_display();
 		
-		// for each frame, track the min and max, address touched.
+	// for each frame, track the min and max, address touched.
 	writeln("PARSING CSV--------------------------------");
     foreach (record; file.byLine.joiner("\n").csvReader!(Tuple!(
 			int, string, int, int, int,
@@ -614,8 +614,7 @@ void parseData()
 					return true;
 					}else{
 					return false;
-					}
-					
+					}	
 				}
 			
 			switch(record[1])
@@ -676,7 +675,6 @@ void parseData()
 					currentFrame.ops ~= o;
 					totalOps++;					
 				break;*/
-
 
 				case "palette":
 					pop p;
@@ -763,8 +761,6 @@ void loadPalette(string path) // raw palette. which our website appears NOT to b
 		}
 	}
 
-ulong currentFrameBeingDrawn = 0;
-
 void drawData()
 	{	
 	assert(canvas != null);
@@ -792,8 +788,7 @@ void drawData()
 			{
 			pixel p;
 			p.x = address % RES_WIDTH;
-			p.y = address / RES_WIDTH;
-			
+			p.y = address / RES_WIDTH;			
 			return p;
 			}	
 
@@ -916,8 +911,9 @@ void drawData()
 					al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,.5,.5,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
 					
 					drawPalette(1200, 0, 8);
-					al_draw_textf(font1, red, 1000, 10, 0, "FRAME %d", f.frameNumber);
-					al_draw_textf(font1, red, 1000, 28, 0, "index %d", currentFrameBeingDrawn);
+					al_draw_textf(font1, red, 1000, 10+18*0, 0, "FRAME %d", f.frameNumber);
+					al_draw_textf(font1, red, 1000, 10+18*1, 0, "index %d", currentFrameBeingDrawn);
+					al_draw_textf(font1, red, 1000, 10+28*2, 0, "%dx%d", RES_WIDTH, RES_HEIGHT);
 				al_flip_display();
 
 				// ------------------------------------------------------------------------------------------------
