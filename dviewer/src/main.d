@@ -523,6 +523,12 @@ triplet[256] CLT; // colorLookupTable;
 
 struct pop /// palette (update) operation
 	{
+	
+	this(ubyte _r, ubyte _g, ubyte _b)	
+		{
+		r = _r; g = _g; b = _b;
+		}
+		
 	ubyte index;
 	ubyte r, g, b;
 	}
@@ -716,6 +722,29 @@ void loadJASCPalette(string path)	// one site says JASC palettes have .BIN forma
 			}
 		i++;
 		}
+		
+	// NOTE HACK: load default EGA palette in
+	// https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
+	// 00 = 0
+	// 55 = 85
+	// AA = 170
+	// FF = 255
+	CLT[ 0] = triplet(  0,   0,   0); // black
+	CLT[ 1] = triplet(  0,   0, 170); // blue
+	CLT[ 2] = triplet(  0, 170,   0); // green
+	CLT[ 3] = triplet(  0, 170, 170); // cyan
+	CLT[ 4] = triplet(170,   0,   0); // red
+	CLT[ 5] = triplet(170,   0, 170); // magenta
+	CLT[ 6] = triplet(170,  85,   0); // brown 
+	CLT[ 7] = triplet(170, 170, 170); // white / light gray
+	CLT[ 8] = triplet( 85,  85,  85); // dark grey	
+	CLT[ 9] = triplet( 85,  85, 255); //bright blue
+	CLT[10] = triplet( 85, 255, 170); // bright green
+	CLT[11] = triplet( 85, 255, 255); // bright cyan
+	CLT[12] = triplet(255,  85, 170); // bright red
+	CLT[13] = triplet(255,  85, 255); // bright magenta
+	CLT[14] = triplet(255, 255,  85); // bright yellow
+	CLT[15] = triplet(255, 255, 255); // bright white
 	}
 	
 /// see here for JASC palettes https://lospec.com/palette-list/tag/8bit

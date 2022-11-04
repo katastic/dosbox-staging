@@ -288,10 +288,10 @@ public:
 		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, "hello40A", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start, NUM_BYTES, 
-			colors0_3 & 0b0000000000001111,
-			colors0_3 & 0b0000000011110000 >> 4,
-			colors0_3 & 0b0000111100000000 >> 8,
-			colors0_3 & 0b1111000000000000 >> 12
+			colors0_3 & 0b00000000000000000000000011111111,
+			colors0_3 & 0b00000000000000001111111100000000 >> 8,
+			colors0_3 & 0b00000000111111110000000000000000 >> 16,
+			colors0_3 & 0b11111111000000000000000000000000 >> 24
 			);
 		
 		temp.d=pixels.d & 0x0f0f0f0f;
@@ -305,10 +305,10 @@ public:
 		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, "hello40B", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start+4, NUM_BYTES,
-			colors4_7 & 0b0000000000001111,
-			colors4_7 & 0b0000000011110000 >> 4,
-			colors4_7 & 0b0000111100000000 >> 8,
-			colors4_7 & 0b1111000000000000 >> 12
+			colors4_7 & 0b00000000000000000000000011111111,
+			colors4_7 & 0b00000000000000001111111100000000 >> 8,
+			colors4_7 & 0b00000000111111110000000000000000 >> 16,
+			colors4_7 & 0b11111111000000000000000000000000 >> 24
 			);
 
 	}
