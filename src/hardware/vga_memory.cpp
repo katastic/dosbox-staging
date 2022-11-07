@@ -133,6 +133,7 @@ public:
 			templatch.d=(vga.latch.d &	FillTable[vga.config.color_dont_care]) ^ FillTable[vga.config.color_compare & vga.config.color_dont_care];
 			return (uint8_t)~(templatch.b[0] | templatch.b[1] | templatch.b[2] | templatch.b[3]);
 		}
+		// printf("hello90\n"); READ
 		return 0;
 	}
 
@@ -142,6 +143,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_read_full;
 		addr = CHECKED2(addr);
+		// printf("hello91\n"); REAd
 		return readHandler(addr);
 	}
 	
@@ -150,6 +152,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_read_full;
 		addr = CHECKED2(addr);
+		// printf("hello92\n"); READ
 		return static_cast<uint16_t>((readHandler(addr + 0) << 0) |
 		                             (readHandler(addr + 1) << 8));
 	}
@@ -159,6 +162,7 @@ public:
 		addr = PAGING_GetPhysicalAddress(addr) & vgapages.mask;
 		addr += vga.svga.bank_read_full;
 		addr = CHECKED2(addr);
+		// printf("hello93\n"); READ
 		return static_cast<uint32_t>((readHandler(addr + 0) << 0) |
 		                             (readHandler(addr + 1) << 8) |
 		                             (readHandler(addr + 2) << 16) |
@@ -194,6 +198,7 @@ public:
 			Expand16Table[2][temp.b[2]] |
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)(write_pixels+4)=colors4_7;
+		printf("hello6\n");
 	}
 public:	
 	VGA_ChainedEGA_Handler()  {
@@ -275,9 +280,12 @@ public:
 		((uint32_t*)vga.mem.linear)[start]=pixels.d;
 		uint8_t * write_pixels=&vga.fastmem[start<<3];
 
+		printf("start:%x start<<3:%x full_map_mask:%8x  @ %d,%d\n", start, start<<3, vga.config.full_map_mask, start % 320, start / 320);
+
 		uint32_t colors0_3, colors4_7;
-		VGA_Latch temp;temp.d=(pixels.d>>4) & 0x0f0f0f0f;
-			colors0_3 = 
+		VGA_Latch temp;
+		temp.d=(pixels.d>>4) & 0x0f0f0f0f;
+		colors0_3 = 
 			Expand16Table[0][temp.b[0]] |
 			Expand16Table[1][temp.b[1]] |
 			Expand16Table[2][temp.b[2]] |
@@ -285,15 +293,16 @@ public:
 		*(uint32_t *)write_pixels=colors0_3;
 			
 		const int NUM_BYTES = 4;
-		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, "hello40A", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start, NUM_BYTES, 
 			colors0_3 & 0b00000000000000000000000011111111,
 			colors0_3 & 0b00000000000000001111111100000000 >> 8,
 			colors0_3 & 0b00000000111111110000000000000000 >> 16,
-			colors0_3 & 0b11111111000000000000000000000000 >> 24
-			);
-		
+			colors0_3 & 0b11111111000000000000000000000000 >> 24,
+			vga.config.full_map_mask
+			); // we "should" only need temp.b[0] for first pixel, etc. I think the expand table just moves it.
+					
 		temp.d=pixels.d & 0x0f0f0f0f;
 		colors4_7 = 
 			Expand16Table[0][temp.b[0]] |
@@ -302,13 +311,14 @@ public:
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)(write_pixels+4)=colors4_7;
 		
-		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, "hello40B", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start+4, NUM_BYTES,
 			colors4_7 & 0b00000000000000000000000011111111,
 			colors4_7 & 0b00000000000000001111111100000000 >> 8,
 			colors4_7 & 0b00000000111111110000000000000000 >> 16,
-			colors4_7 & 0b11111111000000000000000000000000 >> 24
+			colors4_7 & 0b11111111000000000000000000000000 >> 24,
+			vga.config.full_map_mask
 			);
 
 	}
@@ -324,10 +334,15 @@ public:
 		addr = CHECKED2(addr);
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
+		/*
 		const int NUM_BYTES = 1;
-		printf("%d,hello30b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+		
+			should be covered by hello40A/B, removed to reduce log spam
+			
+			printf("%d,hello30b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			addr, NUM_BYTES,(uint8_t)(val >> 0), -1,-1,-1);
+			*/
 	}
 
 	void writew(PhysPt addr, uint16_t val)
@@ -338,10 +353,13 @@ public:
 		MEM_CHANGED( addr << 3);
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
+		/*
+		 * should be covered by hello40A/B, removed to reduce log spam
 		const int NUM_BYTES = 2;
 		printf("%d,hello31w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			addr, NUM_BYTES, (uint8_t)(val >> 0), (uint8_t)(val >> 8),-1,-1);
+			*/
 	}
 
 	void writed(PhysPt addr, uint32_t val)

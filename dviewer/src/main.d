@@ -1,10 +1,13 @@
-int RES_WIDTH = 48;
+int RES_WIDTH = 320/4;
 int RES_HEIGHT = 200;
 float SCALE=2;
 int canvasW = 1366;	// canvas size
 int canvasH = 2000;	// ''
 uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but not draw anything. So we can setup palette, and also skip to specific sections
 uint CONFIG_frameToEnd = 0; //if higher than -1, we'll restart at X. [NYI]
+
+uint drawMask = 0xFFFFFFFF;
+bool isDrawMaskOn = false;
 
 frame[] frames;
 bool firstRun=true;
@@ -16,10 +19,10 @@ int totalPops=0;
 int opsRun = 0;
 int OpsPerDraw = 256;
 bool flipPerFrame = false;
-bool doReorder=false;
-bool isPaused=false;
-bool doSaveFrames=false;
-float parsingTime=-1;
+bool doReorder = false;
+bool isPaused = false;
+bool doSaveFrames = false;
+float parsingTime = -1;
 ulong currentFrameBeingDrawn = 0;
 StopWatch sw3;
 
@@ -360,12 +363,19 @@ void execute()
 					if(isKey(KEY_0))currentFrameBeingDrawn = 0;
 					if(isKey(KEY_R))RES_WIDTH = 80;
 					if(isKey(KEY_T))RES_WIDTH = 160;					
-					if(isKey(KEY_G))RES_WIDTH = 320;					
-					if(isKey(KEY_Y))RES_WIDTH = 640;					
-					if(isKey(KEY_U))RES_WIDTH = 1280;					
-					if(isKey(KEY_I))RES_WIDTH = 640;					
-					if(isKey(KEY_O))RES_WIDTH--;					
-					if(isKey(KEY_P))RES_WIDTH++;					
+					if(isKey(KEY_Y))RES_WIDTH = 256;					
+					if(isKey(KEY_U))RES_WIDTH = 320;										
+					if(isKey(KEY_I))RES_WIDTH = 640;
+					
+					if(isKey(KEY_F1)){drawMask = 0xFF00_0000; isDrawMaskOn = true;}
+					if(isKey(KEY_F2)){drawMask = 0x00FF_0000; isDrawMaskOn = true;}
+					if(isKey(KEY_F3)){drawMask = 0x0000_FF00; isDrawMaskOn = true;}
+					if(isKey(KEY_F4)){drawMask = 0x0000_00FF; isDrawMaskOn = true;}
+					if(isKey(KEY_F5)){drawMask = 0xFFFF_FFFF; isDrawMaskOn = true;}
+					if(isKey(KEY_F6)){						  isDrawMaskOn = false;}
+
+					if(isKey(ALLEGRO_KEY_OPENBRACE))RES_WIDTH--;					
+					if(isKey(ALLEGRO_KEY_CLOSEBRACE))RES_WIDTH++;					
 					
 					keyPressed[event.keyboard.keycode] = true;
 					break;
@@ -530,7 +540,7 @@ struct pop /// palette (update) operation
 		}
 		
 	ubyte index;
-	ubyte r, g, b;
+	ubyte r, g, b;	
 	}
 	/+
 		how are we EMULATING the color lookup table?
@@ -548,7 +558,7 @@ struct op
 	int address;
 	int bytes; //1, 2, or 4
 	int[4] data; // the pixel data. note: given [bytes] rest of array is not used (=0)
-
+	uint mask;
 //	bool isSpecial; // false = pixel write. true = VTRACE, PAN, WINDOW, whatever?
 	}
 
@@ -584,7 +594,7 @@ void parseData()
     foreach (record; file.byLine.joiner("\n").csvReader!(Tuple!(
 			int, string, int, int, int,
 			string, string, int, int, int, 
-			int, int, int, int, int)))
+			int, int, int, int, int, long)))
 		{
 			
 //			writefln("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d",
@@ -622,7 +632,7 @@ void parseData()
 				case "VGA_VerticalTimer":
 				case "VGA_DisplayStartLatch":
 				case "VGA_PanningLatch":
-				case "hello30b":	// EGA likely --> HANDLED BY 40A/B
+				case "hello30b":	// EGA likely --> HANDLED BY 40A/B?
 				case "hello31w":	// EGA ''
 				case "hello55A":	// VGA writeHandler
 					continue;
@@ -647,12 +657,15 @@ void parseData()
 					op o;
 					o.address = record[7]; 
 					o.bytes = record[8];
+					o.mask = record[13];
+					
 					currentFrame.width = record[3]; // NOTE frame settings.
 					currentFrame.height = record[4];
 					if(o.bytes == 1) {o.data[0] = record[9];}
 					if(o.bytes == 2) {o.data[0] = record[9]; o.data[1] = record[10];}
 					if(o.bytes == 4) {o.data[0] = record[9]; o.data[1] = record[10]; o.data[2] = record[11]; o.data[3] = record[12];}
 					currentFrame.ops ~= o;
+					
 					totalOps++;					
 					//writeln("o.address: ", o.address, " for: ", o.data);
 				break;
@@ -736,7 +749,7 @@ void loadJASCPalette(string path)	// one site says JASC palettes have .BIN forma
 	CLT[ 6] = triplet(170,  85,   0); // brown 
 	CLT[ 7] = triplet(170, 170, 170); // white / light gray
 	CLT[ 8] = triplet( 85,  85,  85); // dark grey	
-	CLT[ 9] = triplet( 85,  85, 255); //bright blue
+	CLT[ 9] = triplet( 85,  85, 255); // bright blue
 	CLT[10] = triplet( 85, 255, 170); // bright green
 	CLT[11] = triplet( 85, 255, 255); // bright cyan
 	CLT[12] = triplet(255,  85, 170); // bright red
@@ -823,7 +836,9 @@ void drawData()
 				}
 
 			if(o.bytes == 4)
-				{
+				{				
+				if(isDrawMaskOn && o.mask != drawMask)continue;
+				writefln("%08x", o.mask);				
 				//if(maxWidth < x+3)maxWidth = x+3;	
 				p1 = getAddress(o.address  , RES_WIDTH, RES_HEIGHT);	
 				p1.c = cast(ubyte)o.data[0];
@@ -920,9 +935,10 @@ void drawData()
 					al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,.5,.5,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
 					
 					drawPalette(1200, 0, 8);
-					al_draw_textf(font1, red, 1000, 10+18*0, 0, "FRAME %d", f.frameNumber);
-					al_draw_textf(font1, red, 1000, 10+18*1, 0, "index %d", currentFrameBeingDrawn);
-					al_draw_textf(font1, red, 1000, 10+28*2, 0, "%dx%d", RES_WIDTH, RES_HEIGHT);
+					al_draw_textf(font1, red, 800, 10+28*0, 0, "FRAME %d", f.frameNumber);
+					al_draw_textf(font1, red, 800, 10+28*1, 0, "index %d", currentFrameBeingDrawn);
+					al_draw_textf(font1, red, 800, 10+28*2, 0, "%dx%d", RES_WIDTH, RES_HEIGHT);
+					al_draw_textf(font1, red, 800, 10+28*3, 0, "mask %08x", drawMask);
 				al_flip_display();
 
 				// ------------------------------------------------------------------------------------------------
@@ -965,8 +981,10 @@ void drawData()
 			al_draw_tinted_scaled_bitmap(canvas, ALLEGRO_COLOR(1,0,0,1), 0, 0, canvas.w, canvas.h, 0, 0, canvas.w*SCALE, canvas.h*SCALE, 0);
 					
 			drawPalette(600, 0, 4);
-			al_draw_textf(font1, red, 600, 10, 0, "FRAME %d", f.frameNumber);			
-			al_flip_display();
+			al_draw_textf(font1, red, 800,  10*28*0, 0, "FRAME %d", f.frameNumber);			
+			al_draw_textf(font1, red, 800, 10+28*1, 0, "index %d", currentFrameBeingDrawn);
+			al_draw_textf(font1, red, 800, 10+28*2, 0, "%dx%d", RES_WIDTH, RES_HEIGHT);
+			al_draw_textf(font1, red, 800, 10+28*3, 0, "mask %08x", drawMask);			al_flip_display();
 			
 			// now combine our old work into canvasCombined and clear the other canvas
 			al_set_target_bitmap(canvasCombined);
