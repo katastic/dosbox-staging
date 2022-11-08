@@ -107,7 +107,7 @@ void RENDER_SetPal(uint8_t entry, uint8_t red, uint8_t green, uint8_t blue)
 	if (render.pal.last < entry)
 		render.pal.last = entry;
 		
-	printf("%d,palette,0,0,0,0,0,0,0,%d,%d,%d,%d\n", KAT_CURRENT_FRAME, entry, red, green, blue);
+	printf("%d,palette,0,0,0,0,0,0,0,%d,%d,%d,%d,%d\n", KAT_CURRENT_FRAME, entry, red, green, blue, 0);
 }
 
 static void RENDER_EmptyLineHandler(const void *) {}

@@ -584,9 +584,18 @@ public:
 
 		printf("[below] val:%d data[]=%d,%d,%d,%d pixels.d=%d,%d,%d,%d notmask:%08X mask%08X\n", oldval, getByte(data, 0), getByte(data, 1), getByte(data, 2), getByte(data, 3), getByte(pixels.d, 0), getByte(pixels.d, 1), getByte(pixels.d, 2), getByte(pixels.d, 3), vga.config.full_not_map_mask, vga.config.full_map_mask);
 		const int NUM_BYTES = 1;
-		printf("%d,hello55A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
-			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES,val,-1,-1,-1);
+		//printf("%d,hello55A,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%u\n", 
+//			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			//addr, NUM_BYTES,val,-1,-1,-1, vga.config.full_map_mask); //note unsigned at end
+		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%u\n", 
+			KAT_CURRENT_FRAME, "hello55A", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
+			addr, NUM_BYTES, 
+			val,
+			-1,
+			-1,
+			-1,
+			vga.config.full_map_mask
+			); 
 	}
 public:
 	VGA_UnchainedVGA_Handler()  {
@@ -608,7 +617,7 @@ public:
 		printf("f %d\n", addr);
 		const int NUM_BYTES = 1;
 		int tempAddr = addr;
-		if(vga.config.full_map_mask == 0x000000FF)tempAddr += 0;
+		if(vga.config.full_map_mask == 0x000000FF)tempAddr += 0; // note sure this is right
 		if(vga.config.full_map_mask == 0x0000FF00)tempAddr += 1;
 		if(vga.config.full_map_mask == 0x00FF0000)tempAddr += 2;
 		if(vga.config.full_map_mask == 0xFF000000)tempAddr += 3;
