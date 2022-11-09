@@ -270,7 +270,7 @@ public:
 
 class VGA_UnchainedEGA_Handler : public VGA_UnchainedRead_Handler {
 public:
-	void writeHandler(PhysPt start, uint8_t val) {
+	void writeHandler(PhysPt start, uint8_t val) { // so far EGA appears to be a full mask every time but maybe it's a different register/variable and we're snooping the VGA only one.
 		uint32_t data=ModeOperation(val);
 		/* Update video memory and the pixel buffer */
 		VGA_Latch pixels;
@@ -293,7 +293,7 @@ public:
 		*(uint32_t *)write_pixels=colors0_3;
 			
 		const int NUM_BYTES = 4;
-		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d\n", 
+		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%u\n", 
 			KAT_CURRENT_FRAME, "hello40A", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start, NUM_BYTES, 
 			colors0_3 & 0b00000000000000000000000011111111,
@@ -311,7 +311,7 @@ public:
 			Expand16Table[3][temp.b[3]];
 		*(uint32_t *)(write_pixels+4)=colors4_7;
 		
-		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%d\n", 
+		printf("%d,%s,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%u\n", 
 			KAT_CURRENT_FRAME, "hello40B", MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
 			start+4, NUM_BYTES,
 			colors4_7 & 0b00000000000000000000000011111111,
@@ -617,13 +617,13 @@ public:
 		printf("f %d\n", addr);
 		const int NUM_BYTES = 1;
 		int tempAddr = addr;
-		if(vga.config.full_map_mask == 0x000000FF)tempAddr += 0; // note sure this is right
-		if(vga.config.full_map_mask == 0x0000FF00)tempAddr += 1;
-		if(vga.config.full_map_mask == 0x00FF0000)tempAddr += 2;
-		if(vga.config.full_map_mask == 0xFF000000)tempAddr += 3;
-		printf("%d,hello13b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+//		if(vga.config.full_map_mask == 0x000000FF)tempAddr += 0; // note sure this is right
+//		if(vga.config.full_map_mask == 0x0000FF00)tempAddr += 1;
+//		if(vga.config.full_map_mask == 0x00FF0000)tempAddr += 2;
+//		if(vga.config.full_map_mask == 0xFF000000)tempAddr += 3;
+		printf("%d,hello13b,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%u\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			tempAddr, NUM_BYTES, getByte(val, 0), -1, -1, -1);
+			tempAddr, NUM_BYTES, getByte(val, 0), -1, -1, -1, vga.config.full_map_mask);
 		//printf("    %d %d %d %d %d\n", vga.config.chained, vga.config.compatible_chain4, vga.config.addr_shift, vga.config.write_mode, vga.config.write_mode);
 		// 0 1 0 0 0
 	}
@@ -637,9 +637,9 @@ public:
 		writeHandler(addr+0,(uint8_t)(val >> 0));
 		writeHandler(addr+1,(uint8_t)(val >> 8));
 		const int NUM_BYTES = 2;
-		printf("%d,hello14w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+		printf("%d,hello14w,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%u\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), -1, -1);
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), -1, -1, vga.config.full_map_mask);
 		}
 
 	void writed(PhysPt addr, uint32_t val)
@@ -653,9 +653,9 @@ public:
 		writeHandler(addr+2,(uint8_t)(val >> 16));
 		writeHandler(addr+3,(uint8_t)(val >> 24));
 		const int NUM_BYTES = 4;
-		printf("%d,hello15d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d\n", 
+		printf("%d,hello15d,%d,%d,%d,%s,%s,%d,%d,%d,%d,%d,%d,%u\n", 
 			KAT_CURRENT_FRAME, MODE_NUMBER, MODE_W, MODE_H, MODE_COLORS, MODE_NAME, 
-			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3));
+			addr, NUM_BYTES, getByte(val, 0), getByte(val, 1), getByte(val, 2), getByte(val, 3), vga.config.full_map_mask);
 	}
 };
 

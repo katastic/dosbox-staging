@@ -1,7 +1,7 @@
 bool isUnchained = true;
 int RES_WIDTH = 320/4;
 int RES_HEIGHT = 200;
-float SCALE=2;
+float SCALE=1;
 int canvasW = 1366;	// canvas size
 int canvasH = 2000;	// ''
 uint CONFIG_frameToStartDrawing = 0; //if higher than 0, we'll handle pops but not draw anything. So we can setup palette, and also skip to specific sections
@@ -779,12 +779,15 @@ void drawData()
 			CLT[p.index].g = p.g;
 			CLT[p.index].b = p.b;
 			} // NOTE: we may have to scale from 6 bits to 8 bits, like DOSBOX does, however, DOSBOX is already doing this somewhere and I might be logging those scaled values. see render.cpp:RENDER_SetPal() and vga_dac.cpp:76 calling scale_6_to_8(red)
-
+		
+		pixel p1, p2, p3, p4;
+		
 		pixel getAddress(int address, int resWidth, int resHeight)
 			{
 			pixel p;
 			p.x = (address % RES_WIDTH) * 4;
 			p.y = address / RES_WIDTH;
+			p.c = p1.c; // NOTE: nested function grabbing p1, the default pixel color
 			//p.x = address % RES_WIDTH;
 			//p.y = address / RES_WIDTH;
 			return p;
@@ -793,52 +796,171 @@ void drawData()
 		foreach(o; f.ops)
 			{
 			if(f.frameNumber < CONFIG_frameToStartDrawing)continue;						
-			pixel p1, p2, p3, p4;
+
 			
 			if(maxWidth  < p1.x)maxWidth  = p1.x; // NOTE, not testing p2, p3, p4, doesn't matter right now
 			if(maxHeight < p1.y)maxHeight = p1.y;			
 			
 			if(o.bytes == 1)
 				{
-				writefln("%x %d", o.mask, o.mask);
+				writefln("mask: %08x %d", o.mask, o.mask);
 				
 				p1 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);					
 				p1.c = cast(ubyte)o.data[0];
-				writefln("[%d,%d] = %d [A:%d]", 
-					p1.x, p1.y, p1.c, o.address);
+				writefln("[%d,%d] = %d [A:%d]", p1.x, p1.y, p1.c, o.address);
+				
+				p4 = p3 = p2 = p1; // equal same position (for later relative offsets), AND importantly, same color (overridden as necessary)
 					
 				if(isUnchained)
 					{
-					if(o.mask == 0xFFFFFFFF) // WE GOTTA FIX THIS, we actually have a FOUR PIXEL run.
+/+
+  	mask: 000000ff 255
+	mask: 0000ff00 65280
+	mask: 0000ffff 65535
+	mask: 00ff0000 16711680
+	mask: 00ffff00 16776960
+	mask: 00ffffff 16777215
+	mask: ff000000 4278190080
+	mask: ffff0000 4294
+	mask: ffff0000 4294901760
+	mask: ffffff00 4294967040
+	mask: ffffffff 4294967295
+
+TODO:
+
+bool[4] plotmask;
+
+if((o.mask & 0x000000FF) 		== 0xFF)plotmask[0] = 1;
+if((o.mask & 0x0000FF00) >> 8 	== 0xFF)plotmask[1] = 1;
+if((o.mask & 0x00FF0000) >> 16 	== 0xFF)plotmask[2] = 1;
+if((o.mask & 0xFF000000) >> 24 	== 0xFF)plotmask[3] = 1;
+
++/
+					switch(o.mask){
+					case 0xFFFFFFFF: // WE GOTTA FIX THIS, we actually have a FOUR PIXEL run.
 						{
 						o.bytes = 4;	
 						p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
 						p2.x += 1;
-						p2.c = cast(ubyte)o.data[1];
 						
 						p3 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
 						p3.x += 2;
-						p3.c = cast(ubyte)o.data[2];
 						
 						p4 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
 						p4.x += 3;
-						p4.c = cast(ubyte)o.data[3]; 
+						
+						writefln("X [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
+							p1.x, p1.y, p1.c, o.address, 
+							p2.x, p2.y, p2.c, o.address,
+							p3.x, p3.y, p3.c, o.address,
+							p4.x, p4.y, p4.c, o.address,
+							);
 						
 						// is this the right ordering? or backwards?
 						}
-					else if(o.mask == 0x000000FF)p1.x+=0;
-					else if(o.mask == 0x0000FF00)p1.x+=1;
-					else if(o.mask == 0x00FF0000)p1.x+=2;
-					else if(o.mask == 0xFF000000)p1.x+=3;
+						break;
+					case(0x000000FF): p1.x+=0; break;
+					case(0x0000FF00): p1.x+=1; break;
+					case(0x00FF0000): p1.x+=2; break;
+					case(0xFF000000): p1.x+=3; break;
+					case(0x0000FFFF): // two bytes
+						{
+						o.bytes = 2;
+						p1.x += 0;						
+						
+						p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+						p2.x += 1;
+						
+						writefln("Y1 [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
+							p1.x, p1.y, p1.c, o.address, 
+							p2.x, p2.y, p2.c, o.address,
+							);
+						}
+						break;
+					case(0x00FFFF00): // two bytes, moved 1 left
+						{
+						o.bytes = 2;
+						p1.x += 1;
+
+						p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+						p2.x += 2;
+						
+						writefln("Y3 [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
+							p1.x, p1.y, p1.c, o.address, 
+							p2.x, p2.y, p2.c, o.address,
+							);
+						}
+						break;
+					case(0xFFFF0000):  // two bytes, moved 2 left
+						{
+						o.bytes = 2;						
+						p1.x += 2;
+
+						p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+						p2.x += 3;
+						
+						writefln("Y4 [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
+							p1.x, p1.y, p1.c, o.address, 
+							p2.x, p2.y, p2.c, o.address,
+							);
+						}
+						// still haven't covered 0xFF00FF00  etc or 0xFF0000FF
+						// this format isn't ideal but it doesn't require me to change any code regarding non-mask writes or batch writes
+						break;
+					case(0xFFFFFF00):  // three bytes, 1 shift left
+						{
+						o.bytes = 3;
+						p1.x += 1;
+						
+						p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+						p2.x += 2;
+												
+						p3 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+						p3.x += 3;
+						
+						writefln("Y5 [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
+							p1.x, p1.y, p1.c, o.address, 
+							p2.x, p2.y, p2.c, o.address,
+							p3.x, p3.y, p3.c, o.address
+							);
+						}
+						// still haven't covered 0xFF00FF00  etc or 0xFF0000FF
+						// this format isn't ideal but it doesn't require me to change any code regarding non-mask writes or batch writes
+						break;
+					case(0x00FFFFFF):  // three bytes, no shift
+						{
+						o.bytes = 3;
+						p1.x += 0;
+						
+						p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+						p2.x += 1;
+						
+						p3 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+						p3.x += 2;
+						
+						writefln("Y6 [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
+							p1.x, p1.y, p1.c, o.address, 
+							p2.x, p2.y, p2.c, o.address,
+							p3.x, p3.y, p3.c, o.address
+							);
+						}
+						// this format isn't ideal but it doesn't require me to change any other code regarding non-mask writes or batch writes
+						break;
+					default:
+						writeln("mask OH FUCK OH NO OH FUCK: ", o.mask);
+						break;
+					}
 					}
 				}
 				
-			if(o.bytes == 2)
+			else if(o.bytes == 2)
 				{
+				writefln("mask: %08x %d", o.mask, o.mask);
 //				if(maxWidth < x+1)maxWidth = x+1;				
 				p1 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
 				p1.c = cast(ubyte)o.data[0];
-				p2 = getAddress(o.address+1, RES_WIDTH, RES_HEIGHT);	
+				p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
+				p2.x += 1;
 				p2.c = cast(ubyte)o.data[1];
 				writefln("[%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
 					p1.x, p1.y, p1.c, o.address, 
@@ -846,27 +968,30 @@ void drawData()
 				p2.x += 1;
 				}
 
-			if(o.bytes == 4)
+			else if(o.bytes == 4)
 				{				
-				if(isDrawMaskOn && o.mask != drawMask)continue;
-				writefln("%08x", o.mask);				
+				writefln("mask: %08x %d", o.mask, o.mask);
+				if(isDrawMaskOn && o.mask != drawMask)continue;				
 				//if(maxWidth < x+3)maxWidth = x+3;	
 				p1 = getAddress(o.address  , RES_WIDTH, RES_HEIGHT);	
 				p1.c = cast(ubyte)o.data[0];
+				
 				p2 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);					
 				p2.c = cast(ubyte)o.data[1];
 				p2.x += 1;
+				
 				p3 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
 				p3.c = cast(ubyte)o.data[2];
 				p3.x += 2;
+				
 				p4 = getAddress(o.address, RES_WIDTH, RES_HEIGHT);	
 				p4.c = cast(ubyte)o.data[3];
 				p4.x += 3;
 				writefln("[%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d], [%d,%d] = %d [A:%d]", 
 					p1.x, p1.y, p1.c, o.address, 
-					p2.x, p2.y, p2.c, o.address + 1,
-					p3.x, p3.y, p3.c, o.address + 2,
-					p4.x, p4.y, p4.c, o.address + 3,
+					p2.x, p2.y, p2.c, o.address,
+					p3.x, p3.y, p3.c, o.address,
+					p4.x, p4.y, p4.c, o.address,
 					);
 				}
 			
@@ -920,15 +1045,16 @@ void drawData()
 				}
 			if(o.bytes == 2)
 				{
+				
+				al_draw_pixel(p1.x + 0.5    , p1.y + 0.5, al_map_rgb(CLT[p2.c].r, CLT[p2.c].g, CLT[p2.c].b));	
 				al_draw_pixel(p2.x + 0.5    , p2.y + 0.5, al_map_rgb(CLT[p1.c].r, CLT[p1.c].g, CLT[p1.c].b));
-				al_draw_pixel(p1.x + 0.5 + 1, p1.y + 0.5, al_map_rgb(CLT[p2.c].r, CLT[p2.c].g, CLT[p2.c].b));	
 				}
 			if(o.bytes == 4)
 				{
+				al_draw_pixel(p1.x + 0.5    , p1.y + 0.5, al_map_rgb(CLT[p1.c].r, CLT[p1.c].g, CLT[p1.c].b));				
+				al_draw_pixel(p2.x + 0.5    , p2.y + 0.5, al_map_rgb(CLT[p2.c].r, CLT[p2.c].g, CLT[p2.c].b));
+				al_draw_pixel(p3.x + 0.5    , p3.y + 0.5, al_map_rgb(CLT[p3.c].r, CLT[p3.c].g, CLT[p3.c].b));	
 				al_draw_pixel(p4.x + 0.5    , p4.y + 0.5, al_map_rgb(CLT[p4.c].r, CLT[p4.c].g, CLT[p4.c].b));
-				al_draw_pixel(p3.x + 0.5 + 1, p3.y + 0.5, al_map_rgb(CLT[p3.c].r, CLT[p3.c].g, CLT[p3.c].b));	
-				al_draw_pixel(p2.x + 0.5 + 2, p2.y + 0.5, al_map_rgb(CLT[p2.c].r, CLT[p2.c].g, CLT[p2.c].b));
-				al_draw_pixel(p1.x + 0.5 + 3, p1.y + 0.5, al_map_rgb(CLT[p1.c].r, CLT[p1.c].g, CLT[p1.c].b));				
 				}
 			
 			// writeln("  write ", o.bytes, " bytes: ", c1, " ", c2, " ", c3, " ", c4, " at ", x, " ", y, " addr[", o.address, "]"); //debug
